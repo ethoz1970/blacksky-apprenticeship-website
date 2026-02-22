@@ -70,7 +70,7 @@ export default async function HomePage() {
             fontSize: "12px", color: "#a590ff", fontWeight: 600,
             letterSpacing: "0.08em", textTransform: "uppercase",
           }}>
-            Pure learning · No strings · No fees · No catch
+            Pure learning · No strings · No fees
           </div>
 
           <h1 style={{
