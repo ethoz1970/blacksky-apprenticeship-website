@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
 
       // --- Send approval email with login details ---
       await resend.emails.send({
-        from: "Blacksky Up <noreply@blackskyapprentice.com>",
+        from: "Blacksky Up <info@blackskymedia.org>",
         to: email,
         subject: `You're in, ${firstName} — Welcome to Blacksky Up`,
         html: `
@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
     if (newStatus === "rejected") {
       // --- Send rejection email ---
       await resend.emails.send({
-        from: "Blacksky Up <noreply@blackskyapprentice.com>",
+        from: "Blacksky Up <info@blackskymedia.org>",
         to: email,
         subject: "Your Blacksky Up Application",
         html: `

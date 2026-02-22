@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     // Send confirmation email to applicant
     await resend.emails.send({
-      from: "Blacksky Up <noreply@blackskyapprentice.com>",
+      from: "Blacksky Up <info@blackskymedia.org>",
       to: email,
       subject: "We received your application — Blacksky Up",
       html: `
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 
     // Notify admin
     await resend.emails.send({
-      from: "Blacksky Up <noreply@blackskyapprentice.com>",
+      from: "Blacksky Up <info@blackskymedia.org>",
       to: "blackskymedia@gmail.com",
       subject: `New application — ${name} (${disciplineLabels[discipline] || discipline})`,
       html: `
