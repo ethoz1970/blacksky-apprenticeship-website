@@ -41,13 +41,21 @@ const directus = createDirectus<Schema>(
 
 export async function getCourses(): Promise<Class[]> {
   try {
-    // Note: the classes collection has no status field — all classes are returned
-    const items = await directus.request(
-      readItems('classes', {
-        sort: ['name'],
-      })
+    // Use admin token so all classes are always returned regardless of public-role permissions.
+    // next.revalidate keeps the homepage fresh without hammering Directus on every request.
+    const DIRECTUS_URL   = process.env.NEXT_PUBLIC_DIRECTUS_URL!;
+    const DIRECTUS_TOKEN = process.env.DIRECTUS_API_TOKEN!;
+
+    const res = await fetch(
+      `${DIRECTUS_URL}/items/classes?sort[]=name&fields[]=id,name,discipline,description`,
+      {
+        headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` },
+        next: { revalidate: 60 },
+      }
     );
-    return items as Class[];
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data ?? []) as Class[];
   } catch {
     return [];
   }
