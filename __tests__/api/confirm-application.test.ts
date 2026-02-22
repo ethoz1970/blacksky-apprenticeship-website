@@ -172,21 +172,35 @@ describe("GET /api/confirm-application — success", () => {
     expect(patchUrl).toContain(String(mockApplication.id));
   });
 
-  it("sends exactly one admin notification email", async () => {
+  it("sends exactly two emails on success (applicant receipt + admin notification)", async () => {
     await GET(makeRequest(TEST_TOKEN));
-    expect(mockSendEmail).toHaveBeenCalledTimes(1);
+    expect(mockSendEmail).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends a submission confirmation email to the applicant", async () => {
+    await GET(makeRequest(TEST_TOKEN));
+    const applicantCall = mockSendEmail.mock.calls.find(
+      (c) => c[0].to === mockApplication.email
+    );
+    expect(applicantCall).toBeDefined();
+    expect(applicantCall![0].subject).toMatch(/submitted/i);
+    expect(applicantCall![0].from).toContain("Blacksky Up");
   });
 
   it("sends the admin notification to blackskymedia@gmail.com", async () => {
     await GET(makeRequest(TEST_TOKEN));
-    const [call] = mockSendEmail.mock.calls;
-    expect(call[0].to).toBe("blackskymedia@gmail.com");
+    const adminCall = mockSendEmail.mock.calls.find(
+      (c) => c[0].to === "blackskymedia@gmail.com"
+    );
+    expect(adminCall).toBeDefined();
   });
 
   it("admin email subject contains the applicant's name", async () => {
     await GET(makeRequest(TEST_TOKEN));
-    const [call] = mockSendEmail.mock.calls;
-    expect(call[0].subject).toContain(mockApplication.name);
+    const adminCall = mockSendEmail.mock.calls.find(
+      (c) => c[0].to === "blackskymedia@gmail.com"
+    );
+    expect(adminCall![0].subject).toContain(mockApplication.name);
   });
 });
 
