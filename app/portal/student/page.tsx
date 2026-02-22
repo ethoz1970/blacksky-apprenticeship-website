@@ -92,7 +92,7 @@ export default async function StudentPortalPage() {
       `?fields[]=id,name,description,discipline` +
       `&fields[]=teacher.first_name,teacher.last_name` +
       `&fields[]=materials.id,materials.title,materials.type,materials.description,materials.url,materials.file.id,materials.file.filename_download,materials.date_created` +
-      `&deep[materials][_sort][]=sort,date_created`,
+      `&deep[materials][_sort][]=sort&deep[materials][_sort][]=date_created`,
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
     );
 
