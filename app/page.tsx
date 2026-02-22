@@ -15,8 +15,22 @@ export default async function HomePage() {
   return (
     <main style={{ backgroundColor: "#0d0d1a", minHeight: "100vh", color: "#f0eeff" }}>
 
+      <style>{`
+        @media (max-width: 640px) {
+          .nav-pad       { padding: 14px 20px !important; }
+          .hero-section  { padding: 110px 20px 90px !important; }
+          .pills         { display: none !important; }
+          .section-pad   { padding: 72px 20px !important; }
+          .blockquote    { padding: 24px 20px !important; margin-top: 40px !important; }
+          .why-section   { padding: 60px 20px !important; }
+          .courses-grid  { grid-template-columns: 1fr !important; }
+          .cta-btn-lg    { padding: 16px 32px !important; font-size: 16px !important; width: 100%; box-sizing: border-box; text-align: center; }
+          .footer-pad    { padding: 28px 20px !important; }
+        }
+      `}</style>
+
       {/* ── NAV ───────────────────────────────────────────────── */}
-      <nav style={{
+      <nav className="nav-pad" style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "16px 40px",
@@ -33,7 +47,7 @@ export default async function HomePage() {
       </nav>
 
       {/* ── HERO ──────────────────────────────────────────────── */}
-      <section style={{
+      <section className="hero-section" style={{
         minHeight: "100vh", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
         padding: "140px 40px 100px", textAlign: "center", position: "relative", overflow: "hidden",
@@ -101,7 +115,7 @@ export default async function HomePage() {
         </div>
 
         {/* Discipline pills */}
-        <div style={{
+        <div className="pills" style={{
           position: "absolute", bottom: "40px",
           display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center",
         }}>
@@ -117,7 +131,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── MISSION ───────────────────────────────────────────── */}
-      <section id="mission" style={{ padding: "120px 40px", maxWidth: "860px", margin: "0 auto" }}>
+      <section id="mission" className="section-pad" style={{ padding: "120px 40px", maxWidth: "860px", margin: "0 auto" }}>
         <div style={{
           fontSize: "11px", letterSpacing: "0.15em", textTransform: "uppercase",
           color: "#7b61ff", fontWeight: 700, marginBottom: "28px",
@@ -158,7 +172,7 @@ export default async function HomePage() {
           We&apos;re bringing it back.
         </p>
 
-        <blockquote style={{
+        <blockquote className="blockquote" style={{
           margin: "60px 0 0", padding: "36px 48px",
           backgroundColor: "rgba(123,97,255,0.06)",
           borderLeft: "3px solid #7b61ff",
@@ -176,7 +190,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── WHY APPRENTICESHIP ────────────────────────────────── */}
-      <section style={{
+      <section className="why-section" style={{
         padding: "80px 40px",
         backgroundColor: "rgba(26,26,46,0.35)",
         borderTop: "1px solid rgba(123,97,255,0.08)",
@@ -198,7 +212,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── COURSES ───────────────────────────────────────────── */}
-      <section id="courses" style={{ padding: "120px 40px", maxWidth: "1100px", margin: "0 auto" }}>
+      <section id="courses" className="section-pad" style={{ padding: "120px 40px", maxWidth: "1100px", margin: "0 auto" }}>
         <div style={{ fontSize: "11px", letterSpacing: "0.15em", textTransform: "uppercase", color: "#7b61ff", fontWeight: 700, marginBottom: "16px" }}>
           Courses
         </div>
@@ -209,7 +223,7 @@ export default async function HomePage() {
           Hands-on courses across four disciplines. All free. All built around real skills that matter.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "24px" }}>
+        <div className="courses-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "24px" }}>
           {courses.length > 0 ? courses.map((course) => (
             <div key={course.id} style={{
               backgroundColor: "rgba(26,26,46,0.6)",
@@ -281,7 +295,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── APPLY CTA ─────────────────────────────────────────── */}
-      <section id="apply" style={{ padding: "120px 40px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+      <section id="apply" className="section-pad" style={{ padding: "120px 40px", textAlign: "center", position: "relative", overflow: "hidden" }}>
         <div style={{
           position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
           width: "900px", height: "500px",
@@ -299,7 +313,7 @@ export default async function HomePage() {
             It&apos;s free. It&apos;s real. And it&apos;s built around the belief that
             the right knowledge, in the right hands, changes everything.
           </p>
-          <a href="/apply" style={{
+          <a href="/apply" className="cta-btn-lg" style={{
             backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
             fontWeight: 700, fontSize: "18px", padding: "20px 52px",
             borderRadius: "10px", display: "inline-block",
@@ -313,7 +327,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── FOOTER ────────────────────────────────────────────── */}
-      <footer style={{
+      <footer className="footer-pad" style={{
         borderTop: "1px solid rgba(123,97,255,0.1)",
         padding: "36px 40px",
         display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px",

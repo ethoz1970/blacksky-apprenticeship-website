@@ -94,14 +94,22 @@ export default function ApplyPage() {
   return (
     <main style={{ backgroundColor: "#0d0d1a", minHeight: "100vh", color: "#f0eeff" }}>
 
+      <style>{`
+        @media (max-width: 640px) {
+          .apply-nav  { padding: 16px 20px !important; }
+          .apply-body { padding: 56px 20px !important; }
+          .apply-btn  { width: 100%; box-sizing: border-box; }
+        }
+      `}</style>
+
       {/* Nav */}
-      <nav style={{ padding: "20px 40px", borderBottom: "1px solid rgba(123,97,255,0.1)" }}>
+      <nav className="apply-nav" style={{ padding: "20px 40px", borderBottom: "1px solid rgba(123,97,255,0.1)" }}>
         <a href="/" style={{ fontSize: "17px", fontWeight: 700, color: "#f0eeff", textDecoration: "none" }}>
           Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
         </a>
       </nav>
 
-      <div style={{ maxWidth: "640px", margin: "0 auto", padding: "80px 40px" }}>
+      <div className="apply-body" style={{ maxWidth: "640px", margin: "0 auto", padding: "80px 40px" }}>
 
         {/* Header */}
         <div style={{ marginBottom: "56px" }}>
@@ -186,6 +194,7 @@ export default function ApplyPage() {
           <button
             type="submit"
             disabled={state === "loading"}
+            className="apply-btn"
             style={{
               backgroundColor: state === "loading" ? "#4a3a99" : "#7b61ff",
               color: "white", border: "none", cursor: state === "loading" ? "not-allowed" : "pointer",
