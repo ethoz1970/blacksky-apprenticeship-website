@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const disciplines = [
   { value: "media", label: "Media" },
@@ -9,11 +9,27 @@ const disciplines = [
   { value: "arts", label: "Arts" },
 ];
 
+type CourseOption = { id: number; name: string; discipline: string };
 type FormState = "idle" | "loading" | "success" | "error";
 
 export default function ApplyPage() {
   const [state, setState] = useState<FormState>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [selectedDiscipline, setSelectedDiscipline] = useState("");
+
+  // Load available classes for the dropdown
+  useEffect(() => {
+    fetch("/api/courses")
+      .then((r) => r.json())
+      .then((json) => setCourses(json.data || []))
+      .catch(() => setCourses([]));
+  }, []);
+
+  // Filter courses by selected discipline
+  const filteredCourses = selectedDiscipline
+    ? courses.filter((c) => c.discipline === selectedDiscipline)
+    : courses;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -21,6 +37,8 @@ export default function ApplyPage() {
     setErrorMsg("");
 
     const form = e.currentTarget;
+    const selectedClass = (form.elements.namedItem("selected_class") as HTMLSelectElement)?.value;
+
     const data = {
       name: (form.elements.namedItem("name") as HTMLInputElement).value,
       email: (form.elements.namedItem("email") as HTMLInputElement).value,
@@ -28,6 +46,7 @@ export default function ApplyPage() {
       why_join: (form.elements.namedItem("why_join") as HTMLTextAreaElement).value,
       background: (form.elements.namedItem("background") as HTMLTextAreaElement).value,
       portfolio_url: (form.elements.namedItem("portfolio_url") as HTMLInputElement).value,
+      selected_class: selectedClass ? parseInt(selectedClass, 10) : null,
     };
 
     try {
@@ -47,7 +66,7 @@ export default function ApplyPage() {
     }
   }
 
-  const inputStyle = {
+  const inputStyle: React.CSSProperties = {
     width: "100%",
     backgroundColor: "rgba(26,26,46,0.6)",
     border: "1px solid rgba(123,97,255,0.2)",
@@ -56,11 +75,11 @@ export default function ApplyPage() {
     color: "#f0eeff",
     fontSize: "15px",
     outline: "none",
-    boxSizing: "border-box" as const,
+    boxSizing: "border-box",
     fontFamily: "inherit",
   };
 
-  const labelStyle = {
+  const labelStyle: React.CSSProperties = {
     display: "block",
     fontSize: "13px",
     fontWeight: 600,
@@ -104,7 +123,7 @@ export default function ApplyPage() {
 
       {/* Nav */}
       <nav className="apply-nav" style={{ padding: "20px 40px", borderBottom: "1px solid rgba(123,97,255,0.1)" }}>
-        <a href="/" className="logo-link" style={{ fontSize: "17px", fontWeight: 700, color: "#f0eeff" }}>
+        <a href="/" className="logo-link" style={{ fontSize: "17px", fontWeight: 700, color: "#f0eeff", textDecoration: "none" }}>
           Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
         </a>
       </nav>
@@ -142,13 +161,39 @@ export default function ApplyPage() {
           {/* Discipline */}
           <div>
             <label htmlFor="discipline" style={labelStyle}>Chosen Discipline <span style={{ color: "#7b61ff" }}>*</span></label>
-            <select id="discipline" name="discipline" required defaultValue="" style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}>
+            <select
+              id="discipline" name="discipline" required defaultValue=""
+              style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
+              onChange={(e) => { setSelectedDiscipline(e.target.value); }}
+            >
               <option value="" disabled>Select your discipline...</option>
               {disciplines.map((d) => (
                 <option key={d.value} value={d.value} style={{ backgroundColor: "#1a1a2e" }}>{d.label}</option>
               ))}
             </select>
           </div>
+
+          {/* Preferred Class — shown only when classes are available */}
+          {filteredCourses.length > 0 && (
+            <div>
+              <label htmlFor="selected_class" style={labelStyle}>
+                Preferred Class
+                <span style={{ color: "#606080", fontWeight: 400, marginLeft: "8px" }}>optional</span>
+              </label>
+              <select
+                id="selected_class" name="selected_class" defaultValue=""
+                style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
+              >
+                <option value="">No preference / let us decide</option>
+                {filteredCourses.map((c) => (
+                  <option key={c.id} value={c.id} style={{ backgroundColor: "#1a1a2e" }}>{c.name}</option>
+                ))}
+              </select>
+              <p style={{ fontSize: "12px", color: "#606080", marginTop: "6px" }}>
+                If no classes match your discipline yet, we&apos;ll place you when one opens.
+              </p>
+            </div>
+          )}
 
           {/* Why join */}
           <div>

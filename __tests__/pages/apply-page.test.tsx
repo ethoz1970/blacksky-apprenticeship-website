@@ -25,6 +25,12 @@ global.fetch = mockFetch;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // The apply page fetches /api/courses on mount via useEffect.
+  // Seed the mock queue so this call is always handled, without consuming
+  // any mock set up by individual tests for the form-submission fetch.
+  mockFetch.mockReturnValueOnce(
+    Promise.resolve({ ok: true, json: async () => ({ data: [] }) } as Response)
+  );
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -188,10 +194,16 @@ describe("Apply page — successful submission", () => {
     await fillAndSubmit();
 
     await waitFor(() => {
-      const callBody = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string);
+      // calls[0] = /api/courses (mount fetch); calls[1] = /api/apply (form submit)
+      const applyCall = mockFetch.mock.calls.find(
+        (c) => typeof c[0] === "string" && c[0].includes("/api/apply")
+      );
+      expect(applyCall).toBeDefined();
+      const callBody = JSON.parse((applyCall![1] as RequestInit).body as string);
       expect(callBody.name).toBe("Jordan Lee");
       expect(callBody.email).toBe("jordan@example.com");
       expect(callBody.discipline).toBe("tech");
+      expect(callBody.selected_class).toBeNull(); // no classes loaded in tests
     });
   });
 

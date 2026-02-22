@@ -26,7 +26,7 @@ const SITE_URL =
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, email, discipline, why_join, background, portfolio_url } = body;
+    const { name, email, discipline, why_join, background, portfolio_url, selected_class } = body;
 
     // Basic validation
     if (!name || !email || !discipline || !why_join || !background) {
@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
         why_join,
         background,
         portfolio_url: portfolio_url || null,
+        selected_class: selected_class || null,
         status: "awaiting_confirmation",
         confirmation_token: confirmationToken,
       }),
