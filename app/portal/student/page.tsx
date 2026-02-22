@@ -244,11 +244,30 @@ export default async function StudentPortalPage() {
   );
 }
 
+// File types the browser can display inline without a plugin
+const VIEWABLE_EXTENSIONS = new Set([
+  "pdf", "png", "jpg", "jpeg", "gif", "webp", "svg",
+  "mp4", "webm", "mp3", "wav", "ogg",
+]);
+
+function isViewable(filename: string): boolean {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  return VIEWABLE_EXTENSIONS.has(ext);
+}
+
 function MaterialCard({ material }: { material: Material }) {
   const color = typeColors[material.type] || "#7b61ff";
   const icon = typeIcons[material.type] || "📎";
   const hasLink = material.url;
   const hasFile = material.file?.id;
+  const filename = material.file?.filename_download ?? "";
+  const canView = hasFile && isViewable(filename);
+
+  const linkBase: React.CSSProperties = {
+    fontSize: "13px", fontWeight: 600, textDecoration: "none",
+    display: "inline-flex", alignItems: "center", gap: "4px",
+    padding: "5px 12px", borderRadius: "6px",
+  };
 
   return (
     <div style={{
@@ -274,35 +293,54 @@ function MaterialCard({ material }: { material: Material }) {
           </span>
         </div>
         {material.description && (
-          <p style={{ color: "#a0a0c0", fontSize: "14px", lineHeight: 1.6, margin: "0 0 10px" }}>
+          <p style={{ color: "#a0a0c0", fontSize: "14px", lineHeight: 1.6, margin: "0 0 12px" }}>
             {material.description}
           </p>
         )}
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
           {hasLink && (
             <a
               href={material.url!}
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                color: color, fontSize: "13px", fontWeight: 600,
-                textDecoration: "none",
-                display: "flex", alignItems: "center", gap: "4px",
+                ...linkBase,
+                color: color,
+                backgroundColor: `${color}12`,
+                border: `1px solid ${color}30`,
               }}
             >
               Open link →
             </a>
           )}
+
+          {canView && (
+            <a
+              href={`/api/portal/files/${material.file!.id}?inline=1`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                ...linkBase,
+                color: "#f0eeff",
+                backgroundColor: "rgba(123,97,255,0.15)",
+                border: "1px solid rgba(123,97,255,0.3)",
+              }}
+            >
+              View ↗
+            </a>
+          )}
+
           {hasFile && (
             <a
               href={`/api/portal/files/${material.file!.id}`}
               style={{
-                color: "#7b61ff", fontSize: "13px", fontWeight: 600,
-                textDecoration: "none",
-                display: "flex", alignItems: "center", gap: "4px",
+                ...linkBase,
+                color: "#a0a0c0",
+                backgroundColor: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.1)",
               }}
             >
-              Download {material.file!.filename_download} ↓
+              Download ↓
             </a>
           )}
         </div>

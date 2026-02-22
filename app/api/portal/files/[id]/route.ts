@@ -4,8 +4,10 @@ const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL!;
 
 /**
  * GET /api/portal/files/[id]
- * Proxy for authenticated Directus file downloads.
- * Reads the auth cookie and forwards the request to Directus /assets/:id.
+ * Proxy for authenticated Directus file access.
+ *
+ * ?inline=1  → serves the file inline (browser renders PDFs, images, etc.)
+ * (default)  → forces download via Content-Disposition: attachment
  */
 export async function GET(
   req: NextRequest,
@@ -18,7 +20,14 @@ export async function GET(
 
   try {
     const { id } = await params;
-    const res = await fetch(`${DIRECTUS_URL}/assets/${id}?download`, {
+    const inline = req.nextUrl.searchParams.get("inline") === "1";
+
+    // ?download forces Directus to set Content-Disposition: attachment
+    const directusUrl = inline
+      ? `${DIRECTUS_URL}/assets/${id}`
+      : `${DIRECTUS_URL}/assets/${id}?download`;
+
+    const res = await fetch(directusUrl, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -27,10 +36,17 @@ export async function GET(
     }
 
     const headers = new Headers();
-    const contentType = res.headers.get("Content-Type");
-    const contentDisposition = res.headers.get("Content-Disposition");
-    if (contentType) headers.set("Content-Type", contentType);
-    if (contentDisposition) headers.set("Content-Disposition", contentDisposition);
+    const contentType = res.headers.get("Content-Type") ?? "application/octet-stream";
+    headers.set("Content-Type", contentType);
+
+    if (inline) {
+      // Let the browser decide how to display it
+      headers.set("Content-Disposition", "inline");
+    } else {
+      // Force download — use Directus header if present, otherwise set attachment
+      const cd = res.headers.get("Content-Disposition");
+      headers.set("Content-Disposition", cd ?? "attachment");
+    }
 
     return new NextResponse(res.body, { headers });
   } catch {
