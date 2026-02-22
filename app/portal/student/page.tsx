@@ -61,6 +61,8 @@ type User = {
   last_name?: string;
   class_id?: number | null;
   avatar?: string | null;
+  date_created?: string | null;
+  last_access?: string | null;
 };
 
 export default async function StudentPortalPage() {
@@ -84,7 +86,7 @@ export default async function StudentPortalPage() {
 
   // Fetch the current user (no role.name needed — we already have it from cookie)
   const meRes = await fetch(
-    `${DIRECTUS_URL}/users/me?fields[]=id,first_name,last_name,class_id,avatar`,
+    `${DIRECTUS_URL}/users/me?fields[]=id,first_name,last_name,class_id,avatar,date_created,last_access`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   );
 
@@ -151,9 +153,10 @@ export default async function StudentPortalPage() {
           <div style={{ fontSize: "11px", letterSpacing: "0.15em", textTransform: "uppercase", color: "#7b61ff", fontWeight: 700, marginBottom: "8px" }}>
             Student Portal
           </div>
-          <h1 style={{ fontSize: "36px", fontWeight: 800, color: "white", letterSpacing: "-0.02em", margin: 0 }}>
+          <h1 style={{ fontSize: "36px", fontWeight: 800, color: "white", letterSpacing: "-0.02em", margin: "0 0 16px" }}>
             Welcome back, {user.first_name}.
           </h1>
+          <UserMeta dateCreated={user.date_created} lastAccess={user.last_access} role="Student" />
         </div>
 
         {!classData ? (
@@ -239,6 +242,72 @@ export default async function StudentPortalPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function formatMemberSince(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function formatLastLogin(iso: string | null | undefined): string {
+  if (!iso) return "Never";
+  const now = Date.now();
+  const then = new Date(iso).getTime();
+  const diff = now - then;
+  const mins  = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  const days  = Math.floor(diff / 86_400_000);
+  if (mins  <  2) return "Just now";
+  if (mins  < 60) return `${mins}m ago`;
+  if (hours <  2) return "1 hour ago";
+  if (hours < 24) return `${hours} hours ago`;
+  if (days  <  2) return "Yesterday";
+  if (days  <  7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function UserMeta({ dateCreated, lastAccess, role }: {
+  dateCreated?: string | null;
+  lastAccess?: string | null;
+  role: string;
+}) {
+  const metaChip: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    backgroundColor: "rgba(123,97,255,0.07)",
+    border: "1px solid rgba(123,97,255,0.15)",
+    borderRadius: "100px",
+    padding: "4px 12px",
+    fontSize: "12px",
+    color: "#808098",
+    whiteSpace: "nowrap",
+  };
+  const dot: React.CSSProperties = {
+    width: 6, height: 6, borderRadius: "50%",
+    backgroundColor: "rgba(123,97,255,0.5)",
+    flexShrink: 0,
+  };
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+      <span style={metaChip}>
+        <span style={{ ...dot, backgroundColor: "#a590ff80" }} />
+        <span style={{ color: "#606080" }}>Role</span>
+        <span style={{ color: "#c0b8e8", fontWeight: 600 }}>{role}</span>
+      </span>
+      <span style={metaChip}>
+        <span style={dot} />
+        <span style={{ color: "#606080" }}>Member since</span>
+        <span style={{ color: "#c0b8e8", fontWeight: 600 }}>{formatMemberSince(dateCreated)}</span>
+      </span>
+      <span style={metaChip}>
+        <span style={dot} />
+        <span style={{ color: "#606080" }}>Last login</span>
+        <span style={{ color: "#c0b8e8", fontWeight: 600 }}>{formatLastLogin(lastAccess)}</span>
+      </span>
+    </div>
   );
 }
 
