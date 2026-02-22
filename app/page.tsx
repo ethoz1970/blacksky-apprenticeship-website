@@ -38,9 +38,9 @@ export default async function HomePage() {
         backdropFilter: "blur(12px)",
         borderBottom: "1px solid rgba(123,97,255,0.15)",
       }}>
-        <span style={{ fontSize: "18px", fontWeight: 700, color: "#f0eeff", letterSpacing: "-0.02em" }}>
+        <a href="#" className="logo-link" style={{ fontSize: "18px", fontWeight: 700, color: "#f0eeff", letterSpacing: "-0.02em" }}>
           Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
-        </span>
+        </a>
         <div style={{ display: "flex", gap: "32px", alignItems: "center" }}>
           <a href="#courses" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Courses</a>
         </div>

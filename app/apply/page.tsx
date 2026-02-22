@@ -104,7 +104,7 @@ export default function ApplyPage() {
 
       {/* Nav */}
       <nav className="apply-nav" style={{ padding: "20px 40px", borderBottom: "1px solid rgba(123,97,255,0.1)" }}>
-        <a href="/" style={{ fontSize: "17px", fontWeight: 700, color: "#f0eeff", textDecoration: "none" }}>
+        <a href="/" className="logo-link" style={{ fontSize: "17px", fontWeight: 700, color: "#f0eeff" }}>
           Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
         </a>
       </nav>

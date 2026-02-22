@@ -34,6 +34,25 @@ body {
   background-clip: text;
 }
 
+.logo-link {
+  text-decoration: none;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  transition: opacity 0.2s ease, filter 0.3s ease;
+  cursor: pointer;
+}
+
+.logo-link:hover {
+  opacity: 0.85;
+  filter: drop-shadow(0 0 12px rgba(123, 97, 255, 0.65));
+}
+
+.logo-link:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
 .card-hover {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
