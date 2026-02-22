@@ -5,7 +5,8 @@
  *  - Renders all form fields
  *  - Required field indicators present
  *  - All discipline options available in the dropdown
- *  - Submitting with valid data shows success screen
+ *  - Submitting with valid data shows "Check your inbox" screen
+ *    (email verification is required before application is submitted)
  *  - Submitting with a server error shows error message
  *  - API is called with the correct payload
  *  - Submit button shows loading state while submitting
@@ -133,14 +134,36 @@ describe("Apply page — rendering", () => {
 // ─── Submission — success ─────────────────────────────────────────────────────
 
 describe("Apply page — successful submission", () => {
-  it("shows the success screen after a successful submit", async () => {
+  it("shows the 'Check your inbox' screen after a successful submit", async () => {
     mockFetch.mockReturnValueOnce(successResponse());
     render(<ApplyPage />);
 
     await fillAndSubmit();
 
     await waitFor(() => {
-      expect(screen.getByText(/you're in/i)).toBeInTheDocument();
+      expect(screen.getByText(/check your inbox/i)).toBeInTheDocument();
+    });
+  });
+
+  it("does NOT show 'You're in' on the post-submit screen (email confirmation is still pending)", async () => {
+    mockFetch.mockReturnValueOnce(successResponse());
+    render(<ApplyPage />);
+
+    await fillAndSubmit();
+
+    await waitFor(() => {
+      expect(screen.queryByText(/you're in/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it("tells the user to click the link in their email", async () => {
+    mockFetch.mockReturnValueOnce(successResponse());
+    render(<ApplyPage />);
+
+    await fillAndSubmit();
+
+    await waitFor(() => {
+      expect(screen.getByText(/confirmation email/i)).toBeInTheDocument();
     });
   });
 
@@ -172,7 +195,7 @@ describe("Apply page — successful submission", () => {
     });
   });
 
-  it("shows a Back to Home link on the success screen", async () => {
+  it("shows a Back to Home link on the post-submit screen", async () => {
     mockFetch.mockReturnValueOnce(successResponse());
     render(<ApplyPage />);
 
@@ -258,7 +281,7 @@ describe("Apply page — error handling", () => {
     await fillAndSubmit();
 
     await waitFor(() => {
-      expect(screen.queryByText(/you're in/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/check your inbox/i)).not.toBeInTheDocument();
     });
   });
 });
