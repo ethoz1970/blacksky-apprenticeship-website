@@ -53,6 +53,24 @@ body {
   transition: transform 0.1s ease;
 }
 
+@keyframes colorWave {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.learning-word {
+  font-size: 1.55em;
+  display: inline-block;
+  line-height: 0.95;
+  background: linear-gradient(90deg, #ffffff 0%, #c8b8ff 20%, #7b61ff 45%, #a590ff 65%, #ffffff 100%);
+  background-size: 250% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: colorWave 6s ease-in-out infinite;
+}
+
 .card-hover {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }

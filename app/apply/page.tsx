@@ -142,8 +142,8 @@ export default function ApplyPage() {
           {/* Discipline */}
           <div>
             <label htmlFor="discipline" style={labelStyle}>Chosen Discipline <span style={{ color: "#7b61ff" }}>*</span></label>
-            <select id="discipline" name="discipline" required style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}>
-              <option value="" disabled selected>Select your discipline...</option>
+            <select id="discipline" name="discipline" required defaultValue="" style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}>
+              <option value="" disabled>Select your discipline...</option>
               {disciplines.map((d) => (
                 <option key={d.value} value={d.value} style={{ backgroundColor: "#1a1a2e" }}>{d.label}</option>
               ))}

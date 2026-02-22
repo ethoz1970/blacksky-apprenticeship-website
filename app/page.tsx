@@ -78,12 +78,7 @@ export default async function HomePage() {
             lineHeight: 1.05, letterSpacing: "-0.03em", marginBottom: "28px", color: "white",
           }}>
             The oldest form of{" "}
-            <span style={{
-              background: "linear-gradient(135deg, #ffffff 0%, #a590ff 100%)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-            }}>
-              learning
-            </span>
+            <span className="learning-word">learning</span>
             ,<br />built for the future.
           </h1>
 
@@ -103,13 +98,13 @@ export default async function HomePage() {
             }}>
               Apply Now
             </a>
-            <a href="#mission" style={{
+            <a href="#courses" style={{
               backgroundColor: "rgba(123,97,255,0.08)",
               border: "1px solid rgba(123,97,255,0.25)",
               color: "#a590ff", textDecoration: "none",
               fontWeight: 600, fontSize: "16px", padding: "16px 36px", borderRadius: "8px",
             }}>
-              Our Mission
+              Courses
             </a>
           </div>
         </div>
