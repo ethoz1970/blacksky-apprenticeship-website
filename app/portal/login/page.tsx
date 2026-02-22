@@ -98,7 +98,15 @@ export default function PortalLoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" style={labelStyle}>Password</label>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "8px" }}>
+                <label htmlFor="password" style={{ ...labelStyle, marginBottom: 0 }}>Password</label>
+                <a
+                  href="/portal/forgot-password"
+                  style={{ fontSize: "12px", color: "#7b61ff", textDecoration: "none", fontWeight: 600 }}
+                >
+                  Forgot password?
+                </a>
+              </div>
               <input
                 id="password" name="password" type="password" required
                 placeholder="••••••••"

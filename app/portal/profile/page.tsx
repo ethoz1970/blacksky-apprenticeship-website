@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import ProfileForm from "./ProfileForm";
+import PasswordSection from "./PasswordSection";
 
 const DIRECTUS_URL =
   process.env.NEXT_PUBLIC_DIRECTUS_URL ||
@@ -83,6 +84,8 @@ export default async function ProfilePage() {
           }}
           backHref={backHref}
         />
+
+        <PasswordSection />
       </div>
     </main>
   );
