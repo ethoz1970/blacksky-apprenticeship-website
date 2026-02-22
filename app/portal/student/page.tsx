@@ -38,12 +38,20 @@ type Material = {
   date_created?: string;
 };
 
+type Teacher = {
+  first_name: string;
+  last_name?: string;
+  avatar?: string | null;
+  title?: string | null;
+  description?: string | null;
+};
+
 type Class = {
   id: number;
   name: string;
   description?: string;
   discipline: string;
-  teacher?: { first_name: string; last_name: string } | null;
+  teacher?: Teacher | null;
   materials?: Material[];
 };
 
@@ -90,7 +98,7 @@ export default async function StudentPortalPage() {
     const classRes = await fetch(
       `${DIRECTUS_URL}/items/classes/${user.class_id}` +
       `?fields[]=id,name,description,discipline` +
-      `&fields[]=teacher.first_name,teacher.last_name` +
+      `&fields[]=teacher.first_name,teacher.last_name,teacher.avatar,teacher.title,teacher.description` +
       `&fields[]=materials.id,materials.title,materials.type,materials.description,materials.url,materials.file.id,materials.file.filename_download,materials.date_created` +
       `&deep[materials][_sort][]=sort&deep[materials][_sort][]=date_created`,
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
@@ -172,44 +180,34 @@ export default async function StudentPortalPage() {
               borderRadius: "12px", padding: "32px",
               marginBottom: "40px",
             }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
-                <div>
-                  <div style={{
-                    display: "inline-block",
-                    backgroundColor: `${disciplineColors[classData.discipline] || "#7b61ff"}15`,
-                    border: `1px solid ${disciplineColors[classData.discipline] || "#7b61ff"}35`,
-                    borderRadius: "100px", padding: "4px 12px",
-                    fontSize: "11px", fontWeight: 600,
-                    color: disciplineColors[classData.discipline] || "#7b61ff",
-                    textTransform: "capitalize",
-                    marginBottom: "12px",
-                  }}>
-                    {classData.discipline}
-                  </div>
-                  <h2 style={{ fontSize: "24px", fontWeight: 800, color: "white", margin: "0 0 8px", letterSpacing: "-0.01em" }}>
-                    {classData.name}
-                  </h2>
-                  {classData.description && (
-                    <p style={{ color: "#a0a0c0", fontSize: "15px", lineHeight: 1.7, margin: 0 }}>
-                      {classData.description}
-                    </p>
-                  )}
+              {/* Discipline tag + class name + description */}
+              <div style={{ marginBottom: classData.teacher ? "28px" : 0 }}>
+                <div style={{
+                  display: "inline-block",
+                  backgroundColor: `${disciplineColors[classData.discipline] || "#7b61ff"}15`,
+                  border: `1px solid ${disciplineColors[classData.discipline] || "#7b61ff"}35`,
+                  borderRadius: "100px", padding: "4px 12px",
+                  fontSize: "11px", fontWeight: 600,
+                  color: disciplineColors[classData.discipline] || "#7b61ff",
+                  textTransform: "capitalize",
+                  marginBottom: "12px",
+                }}>
+                  {classData.discipline}
                 </div>
-                {classData.teacher && (
-                  <div style={{
-                    backgroundColor: "rgba(123,97,255,0.08)",
-                    border: "1px solid rgba(123,97,255,0.2)",
-                    borderRadius: "8px", padding: "12px 16px",
-                    fontSize: "13px", color: "#a0a0c0",
-                    whiteSpace: "nowrap",
-                  }}>
-                    <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "4px", color: "#606080" }}>Teacher</div>
-                    <div style={{ fontWeight: 600, color: "#f0eeff" }}>
-                      {classData.teacher.first_name} {classData.teacher.last_name}
-                    </div>
-                  </div>
+                <h2 style={{ fontSize: "24px", fontWeight: 800, color: "white", margin: "0 0 8px", letterSpacing: "-0.01em" }}>
+                  {classData.name}
+                </h2>
+                {classData.description && (
+                  <p style={{ color: "#a0a0c0", fontSize: "15px", lineHeight: 1.7, margin: 0 }}>
+                    {classData.description}
+                  </p>
                 )}
               </div>
+
+              {/* Teacher profile card */}
+              {classData.teacher && (
+                <TeacherCard teacher={classData.teacher} />
+              )}
             </div>
 
             {/* Materials */}
@@ -241,6 +239,76 @@ export default async function StudentPortalPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function TeacherCard({ teacher }: { teacher: Teacher }) {
+  const fullName = `${teacher.first_name} ${teacher.last_name || ""}`.trim();
+  const initials = [teacher.first_name?.[0], teacher.last_name?.[0]]
+    .filter(Boolean).join("").toUpperCase() || "?";
+
+  return (
+    <div style={{
+      borderTop: "1px solid rgba(123,97,255,0.12)",
+      paddingTop: "24px",
+      display: "flex",
+      alignItems: "flex-start",
+      gap: "18px",
+    }}>
+      {/* Avatar */}
+      <div style={{ flexShrink: 0 }}>
+        {teacher.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/portal/files/${teacher.avatar}`}
+            alt={fullName}
+            style={{
+              width: 64, height: 64, borderRadius: "50%",
+              objectFit: "cover",
+              border: "2px solid rgba(123,97,255,0.35)",
+              boxShadow: "0 0 0 4px rgba(123,97,255,0.08)",
+            }}
+          />
+        ) : (
+          <div style={{
+            width: 64, height: 64, borderRadius: "50%",
+            backgroundColor: "rgba(123,97,255,0.15)",
+            border: "2px solid rgba(123,97,255,0.3)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "22px", fontWeight: 800, color: "#a590ff",
+            boxShadow: "0 0 0 4px rgba(123,97,255,0.06)",
+          }}>
+            {initials}
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0, paddingTop: "4px" }}>
+        <div style={{
+          fontSize: "10px", letterSpacing: "0.12em", textTransform: "uppercase",
+          color: "#7b61ff", fontWeight: 700, marginBottom: "4px",
+        }}>
+          Your Instructor
+        </div>
+        <div style={{ fontSize: "17px", fontWeight: 700, color: "#f0eeff", marginBottom: "2px" }}>
+          {fullName}
+        </div>
+        {teacher.title && (
+          <div style={{ fontSize: "13px", color: "#7b61ff", fontWeight: 500, marginBottom: "6px" }}>
+            {teacher.title}
+          </div>
+        )}
+        {teacher.description && (
+          <p style={{
+            color: "#a0a0c0", fontSize: "14px", lineHeight: 1.65,
+            margin: 0, maxWidth: "560px",
+          }}>
+            {teacher.description}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 
