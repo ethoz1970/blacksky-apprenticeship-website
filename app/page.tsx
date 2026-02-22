@@ -28,12 +28,7 @@ export default async function HomePage() {
           Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
         </span>
         <div style={{ display: "flex", gap: "32px", alignItems: "center" }}>
-          <a href="#mission" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Mission</a>
           <a href="#courses" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Courses</a>
-          <a href="/apply" style={{
-            backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
-            fontSize: "14px", fontWeight: 600, padding: "8px 20px", borderRadius: "6px",
-          }}>Apply Now</a>
         </div>
       </nav>
 
