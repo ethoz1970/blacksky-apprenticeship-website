@@ -73,15 +73,15 @@ export default function ApplyPage() {
     return (
       <main style={{ backgroundColor: "#0d0d1a", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px" }}>
         <div style={{ textAlign: "center", maxWidth: "520px" }}>
-          <div style={{ fontSize: "48px", marginBottom: "24px" }}>✦</div>
+          <div style={{ fontSize: "48px", marginBottom: "24px" }}>✉</div>
           <h1 style={{ fontSize: "36px", fontWeight: 800, color: "white", marginBottom: "16px", letterSpacing: "-0.02em" }}>
-            You&apos;re in.
+            Check your inbox.
           </h1>
           <p style={{ fontSize: "18px", color: "#a0a0c0", lineHeight: 1.75, marginBottom: "12px" }}>
-            Your application has been received. Check your inbox for a confirmation — we&apos;ll be in touch soon.
+            We sent you a confirmation email. Click the link inside to officially submit your application.
           </p>
           <p style={{ fontSize: "14px", color: "#606080", marginBottom: "40px" }}>
-            In the meantime, feel free to explore the program.
+            Don&apos;t see it? Check your spam folder.
           </p>
           <a href="/" style={{ backgroundColor: "#7b61ff", color: "white", textDecoration: "none", fontWeight: 700, fontSize: "15px", padding: "14px 32px", borderRadius: "8px", display: "inline-block" }}>
             Back to Home
