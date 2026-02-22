@@ -256,9 +256,32 @@ function ClassSection({ cls }: { cls: Class }) {
   );
 }
 
+const VIEWABLE_EXTENSIONS = new Set([
+  "pdf", "png", "jpg", "jpeg", "gif", "webp", "svg",
+  "mp4", "webm", "mp3", "wav", "ogg",
+]);
+
+function isViewable(filename: string): boolean {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  return VIEWABLE_EXTENSIONS.has(ext);
+}
+
 function MaterialRow({ material }: { material: Material }) {
   const color = typeColors[material.type] || "#7b61ff";
   const icon = typeIcons[material.type] || "📎";
+  const filename = material.file?.filename_download ?? "";
+  const canView = !!material.file?.id && isViewable(filename);
+
+  const btnStyle = (variant: "view" | "download" | "link"): React.CSSProperties => ({
+    fontSize: "11px", fontWeight: 600, textDecoration: "none",
+    display: "inline-flex", alignItems: "center", gap: "3px",
+    padding: "3px 10px", borderRadius: "5px",
+    ...(variant === "view"
+      ? { color: "#f0eeff", backgroundColor: "rgba(123,97,255,0.15)", border: "1px solid rgba(123,97,255,0.3)" }
+      : variant === "download"
+      ? { color: "#a0a0c0", backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }
+      : { color: "#a590ff", backgroundColor: "rgba(165,144,255,0.08)", border: "1px solid rgba(165,144,255,0.2)" }),
+  });
 
   return (
     <div style={{
@@ -282,18 +305,25 @@ function MaterialRow({ material }: { material: Material }) {
           </span>
         </div>
         {material.description && (
-          <p style={{ color: "#808098", fontSize: "12px", lineHeight: 1.5, margin: "0 0 4px" }}>{material.description}</p>
+          <p style={{ color: "#808098", fontSize: "12px", lineHeight: 1.5, margin: "0 0 6px" }}>{material.description}</p>
         )}
-        {material.url && (
-          <a href={material.url} target="_blank" rel="noopener noreferrer" style={{ color: "#a590ff", fontSize: "12px" }}>
-            {material.url.length > 48 ? material.url.slice(0, 48) + "…" : material.url}
-          </a>
-        )}
-        {material.file && (
-          <span style={{ color: "#a590ff", fontSize: "12px" }}>
-            📎 {material.file.filename_download}
-          </span>
-        )}
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "4px" }}>
+          {material.url && (
+            <a href={material.url} target="_blank" rel="noopener noreferrer" style={btnStyle("link")}>
+              Open link →
+            </a>
+          )}
+          {canView && (
+            <a href={`/api/portal/files/${material.file!.id}?inline=1`} target="_blank" rel="noopener noreferrer" style={btnStyle("view")}>
+              View ↗
+            </a>
+          )}
+          {material.file?.id && (
+            <a href={`/api/portal/files/${material.file.id}`} style={btnStyle("download")}>
+              Download ↓
+            </a>
+          )}
+        </div>
       </div>
       <DeleteMaterialButton materialId={material.id} />
     </div>

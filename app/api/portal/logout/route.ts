@@ -6,7 +6,8 @@ import { NextRequest, NextResponse } from "next/server";
  * Works as a plain HTML form action (no JS required).
  */
 export async function POST(req: NextRequest) {
-  const response = NextResponse.redirect(new URL("/portal/login", req.url));
+  // 303 See Other: tells the browser to follow with a GET (not re-POST)
+  const response = NextResponse.redirect(new URL("/portal/login", req.url), { status: 303 });
   response.cookies.delete("directus_token");
   response.cookies.delete("directus_refresh");
   response.cookies.delete("portal_role");
