@@ -64,6 +64,16 @@ export async function POST(req: NextRequest) {
       path: "/",
     });
 
+    // Store role so portal pages don't need to re-fetch it from Directus
+    // (students lack permission to expand the role relation via their own token)
+    response.cookies.set("portal_role", roleName, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24,
+      path: "/",
+    });
+
     if (refresh_token) {
       response.cookies.set("directus_refresh", refresh_token, {
         httpOnly: true,

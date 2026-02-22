@@ -60,23 +60,28 @@ export default async function StudentPortalPage() {
 
   if (!token) redirect("/portal/login");
 
-  // Fetch the current user
+  // Role is stored at login — students can't expand role.name via their own token
+  const role = cookieStore.get("portal_role")?.value || "";
+  if (role === "teacher") redirect("/portal/teacher");
+  if (role && role !== "student") {
+    // Applicant or unknown role — show pending state (still fetch name if possible)
+    const meRes = await fetch(
+      `${DIRECTUS_URL}/users/me?fields[]=first_name`,
+      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+    );
+    const firstName = meRes.ok ? (await meRes.json())?.data?.first_name || "" : "";
+    return <PendingView firstName={firstName} />;
+  }
+
+  // Fetch the current user (no role.name needed — we already have it from cookie)
   const meRes = await fetch(
-    `${DIRECTUS_URL}/users/me?fields[]=id,first_name,last_name,class_id,role.name`,
+    `${DIRECTUS_URL}/users/me?fields[]=id,first_name,last_name,class_id`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   );
 
   if (!meRes.ok) redirect("/portal/login");
 
-  const { data: user }: { data: User & { role: { name: string } } } = await meRes.json();
-  const roleName = user?.role?.name?.toLowerCase();
-
-  // Redirect if not a student
-  if (roleName === "teacher") redirect("/portal/teacher");
-  if (roleName !== "student") {
-    // Applicant or unknown
-    return <PendingView firstName={user.first_name} />;
-  }
+  const { data: user }: { data: User } = await meRes.json();
 
   // Fetch the student's class with materials and teacher
   let classData: Class | null = null;

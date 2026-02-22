@@ -9,5 +9,6 @@ export async function POST(req: NextRequest) {
   const response = NextResponse.redirect(new URL("/portal/login", req.url));
   response.cookies.delete("directus_token");
   response.cookies.delete("directus_refresh");
+  response.cookies.delete("portal_role");
   return response;
 }

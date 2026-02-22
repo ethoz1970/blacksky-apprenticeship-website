@@ -55,19 +55,20 @@ export default async function TeacherPortalPage() {
 
   if (!token) redirect("/portal/login");
 
-  // Get current user info and ID
+  // Role stored at login — no need to re-fetch from Directus
+  const role = cookieStore.get("portal_role")?.value || "";
+  if (role === "student") redirect("/portal/student");
+  if (role && role !== "teacher") redirect("/portal/login");
+
+  // Get current user info and ID (no role.name needed)
   const meRes = await fetch(
-    `${DIRECTUS_URL}/users/me?fields[]=id,first_name,last_name,role.name`,
+    `${DIRECTUS_URL}/users/me?fields[]=id,first_name,last_name`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   );
 
   if (!meRes.ok) redirect("/portal/login");
 
   const { data: user } = await meRes.json();
-  const roleName = user?.role?.name?.toLowerCase();
-
-  if (roleName === "student") redirect("/portal/student");
-  if (roleName !== "teacher") redirect("/portal/login");
 
   // Fetch teacher's classes (using their actual user ID)
   const classRes = await fetch(

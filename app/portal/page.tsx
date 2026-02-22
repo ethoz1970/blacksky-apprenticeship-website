@@ -1,12 +1,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-const DIRECTUS_URL =
-  process.env.NEXT_PUBLIC_DIRECTUS_URL ||
-  "https://directus-production-21fe.up.railway.app";
-
 /**
- * /portal — reads auth cookie and redirects to the role-appropriate dashboard.
+ * /portal — reads the portal_role cookie (set at login) and redirects to the
+ * role-appropriate dashboard. Falls back to /portal/login if no session.
  */
 export default async function PortalPage() {
   const cookieStore = await cookies();
@@ -16,26 +13,13 @@ export default async function PortalPage() {
     redirect("/portal/login");
   }
 
-  // Get user role from Directus
-  const meRes = await fetch(
-    `${DIRECTUS_URL}/users/me?fields[]=role.name`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }
-  );
+  // Role is stored at login to avoid re-fetching (students can't expand role.name)
+  const role = cookieStore.get("portal_role")?.value || "";
 
-  if (!meRes.ok) {
-    redirect("/portal/login");
-  }
+  if (role === "teacher") redirect("/portal/teacher");
+  if (role === "student") redirect("/portal/student");
+  if (role === "applicant") redirect("/portal/applicant");
 
-  const { data } = await meRes.json();
-  const roleName: string = (data?.role?.name || "").toLowerCase();
-
-  if (roleName === "teacher") redirect("/portal/teacher");
-  if (roleName === "student") redirect("/portal/student");
-  if (roleName === "applicant") redirect("/portal/applicant");
-
-  // Unknown role — go back to login
+  // Unknown or missing role — go back to login
   redirect("/portal/login");
 }
