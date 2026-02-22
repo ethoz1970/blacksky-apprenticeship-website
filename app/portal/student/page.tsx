@@ -61,7 +61,6 @@ type User = {
   last_name?: string;
   class_id?: number | null;
   avatar?: string | null;
-  date_created?: string | null;
   last_access?: string | null;
 };
 
@@ -86,7 +85,7 @@ export default async function StudentPortalPage() {
 
   // Fetch the current user (no role.name needed — we already have it from cookie)
   const meRes = await fetch(
-    `${DIRECTUS_URL}/users/me?fields[]=id,first_name,last_name,class_id,avatar,date_created,last_access`,
+    `${DIRECTUS_URL}/users/me?fields[]=id,first_name,last_name,class_id,avatar,last_access`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   );
 
@@ -156,7 +155,7 @@ export default async function StudentPortalPage() {
           <h1 style={{ fontSize: "36px", fontWeight: 800, color: "white", letterSpacing: "-0.02em", margin: "0 0 16px" }}>
             Welcome back, {user.first_name}.
           </h1>
-          <UserMeta dateCreated={user.date_created} lastAccess={user.last_access} role="Student" />
+          <UserMeta lastAccess={user.last_access} role="Student" />
         </div>
 
         {!classData ? (
@@ -245,12 +244,6 @@ export default async function StudentPortalPage() {
   );
 }
 
-function formatMemberSince(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-}
-
 function formatLastLogin(iso: string | null | undefined): string {
   if (!iso) return "Never";
   const now = Date.now();
@@ -268,8 +261,7 @@ function formatLastLogin(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function UserMeta({ dateCreated, lastAccess, role }: {
-  dateCreated?: string | null;
+function UserMeta({ lastAccess, role }: {
   lastAccess?: string | null;
   role: string;
 }) {
@@ -296,11 +288,6 @@ function UserMeta({ dateCreated, lastAccess, role }: {
         <span style={{ ...dot, backgroundColor: "#a590ff80" }} />
         <span style={{ color: "#606080" }}>Role</span>
         <span style={{ color: "#c0b8e8", fontWeight: 600 }}>{role}</span>
-      </span>
-      <span style={metaChip}>
-        <span style={dot} />
-        <span style={{ color: "#606080" }}>Member since</span>
-        <span style={{ color: "#c0b8e8", fontWeight: 600 }}>{formatMemberSince(dateCreated)}</span>
       </span>
       <span style={metaChip}>
         <span style={dot} />
