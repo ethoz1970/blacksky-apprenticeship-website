@@ -49,14 +49,14 @@ export async function POST(req: NextRequest) {
 
     // Send confirmation email to applicant
     await resend.emails.send({
-      from: "Blacksky Apprenticeship <noreply@blackskyapprentice.com>",
+      from: "Blacksky Up <noreply@blackskyapprentice.com>",
       to: email,
-      subject: "We received your application — Blacksky Apprenticeship Program",
+      subject: "We received your application — Blacksky Up",
       html: `
         <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto; color: #333;">
           <div style="background: #1a1a2e; padding: 32px; border-radius: 12px 12px 0 0; text-align: center;">
             <h1 style="color: white; font-size: 24px; margin: 0; font-weight: 800;">
-              Blacksky <span style="color: #7b61ff;">Apprenticeship</span>
+              Blacksky <span style="color: #7b61ff;">Up</span>
             </h1>
           </div>
           <div style="background: #f9f9ff; padding: 40px 32px; border-radius: 0 0 12px 12px;">
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
               Application received, ${name.split(" ")[0]}.
             </h2>
             <p style="color: #555; line-height: 1.7; margin: 0 0 16px;">
-              Thank you for applying to the Blacksky Apprenticeship Program. We've received your application for the <strong>${disciplineLabels[discipline] || discipline}</strong> track and will review it personally.
+              Thank you for applying to Blacksky Up. We've received your application for the <strong>${disciplineLabels[discipline] || discipline}</strong> track and will review it personally.
             </p>
             <p style="color: #555; line-height: 1.7; margin: 0 0 24px;">
               Expect to hear back from us within a few days. In the meantime, feel free to explore our upcoming courses.
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
 
     // Notify admin
     await resend.emails.send({
-      from: "Blacksky Apprenticeship <noreply@blackskyapprentice.com>",
+      from: "Blacksky Up <noreply@blackskyapprentice.com>",
       to: "blackskymedia@gmail.com",
       subject: `New application — ${name} (${disciplineLabels[discipline] || discipline})`,
       html: `

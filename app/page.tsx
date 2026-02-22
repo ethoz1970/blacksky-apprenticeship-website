@@ -25,7 +25,7 @@ export default async function HomePage() {
         borderBottom: "1px solid rgba(123,97,255,0.15)",
       }}>
         <span style={{ fontSize: "18px", fontWeight: 700, color: "#f0eeff", letterSpacing: "-0.02em" }}>
-          Blacksky<span style={{ color: "#7b61ff" }}> Apprenticeship</span>
+          Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
         </span>
         <div style={{ display: "flex", gap: "32px", alignItems: "center" }}>
           <a href="#mission" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Mission</a>
@@ -33,7 +33,7 @@ export default async function HomePage() {
           <a href="/apply" style={{
             backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
             fontSize: "14px", fontWeight: 600, padding: "8px 20px", borderRadius: "6px",
-          }}>Apply Free</a>
+          }}>Apply Now</a>
         </div>
       </nav>
 
@@ -82,7 +82,7 @@ export default async function HomePage() {
             fontSize: "clamp(16px, 2vw, 20px)", color: "#a0a0c0", lineHeight: 1.75,
             maxWidth: "580px", margin: "0 auto 52px",
           }}>
-            Blacksky is a free apprenticeship program in media, technology, business, and the arts.
+            Blacksky Up is a free apprenticeship program in media, technology, business, and the arts.
             We&apos;re not a college. We&apos;re not an academy.
             We&apos;re something older — and better.
           </p>
@@ -92,7 +92,7 @@ export default async function HomePage() {
               backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
               fontWeight: 700, fontSize: "16px", padding: "16px 36px", borderRadius: "8px",
             }}>
-              Apply Now — It&apos;s Free
+              Apply Now
             </a>
             <a href="#mission" style={{
               backgroundColor: "rgba(123,97,255,0.08)",
@@ -134,7 +134,7 @@ export default async function HomePage() {
           fontSize: "clamp(20px, 2.5vw, 26px)", lineHeight: 1.65,
           color: "#d0d0e8", marginBottom: "36px", fontWeight: 400,
         }}>
-          Blacksky Apprenticeship Program exists to revive the oldest model of learning
+          Blacksky Up exists to revive the oldest model of learning
           the world has ever known — and bring it fully into the future.
         </p>
 
@@ -309,7 +309,7 @@ export default async function HomePage() {
             fontWeight: 700, fontSize: "18px", padding: "20px 52px",
             borderRadius: "10px", display: "inline-block",
           }}>
-            Apply Now — It&apos;s Free
+            Apply Now
           </a>
           <p style={{ fontSize: "13px", color: "#606080", marginTop: "20px" }}>
             No tuition. No prerequisites. Just show up ready to learn.
@@ -324,7 +324,7 @@ export default async function HomePage() {
         display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px",
       }}>
         <span style={{ fontSize: "15px", fontWeight: 700, color: "#f0eeff" }}>
-          Blacksky<span style={{ color: "#7b61ff" }}> Apprenticeship</span>
+          Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
         </span>
         <span style={{ fontSize: "13px", color: "#606080" }}>
           Free education. Real knowledge. No exceptions.
