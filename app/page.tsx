@@ -30,7 +30,7 @@ export default async function HomePage() {
         <div style={{ display: "flex", gap: "32px", alignItems: "center" }}>
           <a href="#mission" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Mission</a>
           <a href="#courses" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Courses</a>
-          <a href="#apply" style={{
+          <a href="/apply" style={{
             backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
             fontSize: "14px", fontWeight: 600, padding: "8px 20px", borderRadius: "6px",
           }}>Apply Free</a>
@@ -88,7 +88,7 @@ export default async function HomePage() {
           </p>
 
           <div style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="#apply" style={{
+            <a href="/apply" style={{
               backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
               fontWeight: 700, fontSize: "16px", padding: "16px 36px", borderRadius: "8px",
             }}>
@@ -304,7 +304,7 @@ export default async function HomePage() {
             It&apos;s free. It&apos;s real. And it&apos;s built around the belief that
             the right knowledge, in the right hands, changes everything.
           </p>
-          <a href="mailto:blackskymedia@gmail.com?subject=Blacksky Apprenticeship Application" style={{
+          <a href="/apply" style={{
             backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
             fontWeight: 700, fontSize: "18px", padding: "20px 52px",
             borderRadius: "10px", display: "inline-block",
