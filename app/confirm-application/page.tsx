@@ -2,6 +2,7 @@ import { Resend } from "resend";
 
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL!;
 const DIRECTUS_TOKEN = process.env.DIRECTUS_API_TOKEN!;
+const APPLICANT_ROLE_ID = process.env.DIRECTUS_APPLICANT_ROLE_ID!;
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -12,11 +13,20 @@ const disciplineLabels: Record<string, string> = {
   arts: "Arts",
 };
 
+function generateTempPassword(length = 14): string {
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
 async function confirmApplication(
   token: string
 ): Promise<{ success: boolean; name?: string; error?: string }> {
   try {
-    // Look up application by confirmation_token
+    // 1. Look up application by confirmation_token
     const searchRes = await fetch(
       `${DIRECTUS_URL}/items/applications?filter[confirmation_token][_eq]=${encodeURIComponent(token)}&filter[status][_eq]=awaiting_confirmation&limit=1`,
       {
@@ -38,10 +48,45 @@ async function confirmApplication(
 
     const application = data[0];
     const { id, name, email, discipline, why_join, background, portfolio_url } = application;
-    const firstName = name.split(" ")[0];
+    const nameParts = name.trim().split(/\s+/);
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(" ") || "";
     const disciplineLabel = disciplineLabels[discipline] || discipline;
+    const tempPassword = generateTempPassword();
 
-    // Update application: status → pending, clear token
+    // 2. Create Directus applicant account
+    let applicantUserId: string | null = null;
+    const createUserRes = await fetch(`${DIRECTUS_URL}/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${DIRECTUS_TOKEN}`,
+      },
+      body: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        password: tempPassword,
+        role: APPLICANT_ROLE_ID,
+        status: "active",
+      }),
+    });
+
+    if (createUserRes.ok) {
+      const { data: newUser } = await createUserRes.json();
+      applicantUserId = newUser?.id ?? null;
+    } else {
+      const err = await createUserRes.json();
+      // If email already exists the account is already linked — continue without failing
+      const isAlreadyExists =
+        err?.errors?.[0]?.extensions?.code === "RECORD_NOT_UNIQUE";
+      if (!isAlreadyExists) {
+        console.error("Failed to create applicant user:", err);
+        // Non-fatal — still confirm the application but without an account
+      }
+    }
+
+    // 3. Confirm application: status → pending, clear token, link user
     const updateRes = await fetch(`${DIRECTUS_URL}/items/applications/${id}`, {
       method: "PATCH",
       headers: {
@@ -51,6 +96,7 @@ async function confirmApplication(
       body: JSON.stringify({
         status: "pending",
         confirmation_token: null,
+        ...(applicantUserId ? { applicant_user_id: applicantUserId } : {}),
       }),
     });
 
@@ -59,9 +105,11 @@ async function confirmApplication(
       return { success: false, error: "server_error" };
     }
 
-    // Send both emails in parallel — applicant receipt + admin notification
+    const loginUrl = `${DIRECTUS_URL}/admin`;
+
+    // 4. Send both emails in parallel
     await Promise.all([
-      // Applicant: application submitted confirmation
+      // Applicant: submission confirmed + login credentials
       resend.emails.send({
         from: "Blacksky Up <info@blackskymedia.org>",
         to: email,
@@ -80,12 +128,43 @@ async function confirmApplication(
               <p style="color: #555; line-height: 1.7; margin: 0 0 16px;">
                 Your application to the <strong>${disciplineLabel}</strong> track is officially in. We review every application personally and will be in touch within a few days.
               </p>
+              <p style="color: #555; line-height: 1.7; margin: 0 0 24px;">
+                In the meantime, you can log into your applicant portal to update your application, add to your portfolio, or check in on your status.
+              </p>
+
+              ${applicantUserId ? `
+              <div style="background: #1a1a2e; border-radius: 10px; padding: 24px; margin: 0 0 28px;">
+                <p style="color: #a0a0c0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 16px; font-weight: 600;">
+                  Your Portal Login
+                </p>
+                <p style="color: white; font-size: 15px; margin: 0 0 8px;">
+                  <strong style="color: #a0a0c0;">URL:</strong>&nbsp;
+                  <a href="${loginUrl}" style="color: #7b61ff;">${loginUrl}</a>
+                </p>
+                <p style="color: white; font-size: 15px; margin: 0 0 8px;">
+                  <strong style="color: #a0a0c0;">Email:</strong>&nbsp; ${email}
+                </p>
+                <p style="color: white; font-size: 15px; margin: 0;">
+                  <strong style="color: #a0a0c0;">Temp Password:</strong>&nbsp;
+                  <span style="font-family: monospace; background: rgba(123,97,255,0.15); padding: 3px 8px; border-radius: 4px;">${tempPassword}</span>
+                </p>
+                <p style="color: #606080; font-size: 12px; margin: 12px 0 0;">
+                  Please change your password after your first login.
+                </p>
+              </div>
+              <a href="${loginUrl}"
+                style="display: inline-block; background: #7b61ff; color: white; text-decoration: none; font-weight: 700; font-size: 15px; padding: 14px 28px; border-radius: 8px; margin-bottom: 28px;">
+                Log In to Your Portal →
+              </a>
+              ` : `
               <div style="background: #1a1a2e; border-radius: 8px; padding: 20px 24px; margin: 0 0 28px;">
                 <p style="color: #a0a0c0; font-size: 14px; margin: 0 0 8px;">Your application summary</p>
                 <p style="color: white; font-size: 15px; margin: 0;"><strong>Name:</strong> ${name}</p>
                 <p style="color: white; font-size: 15px; margin: 4px 0 0;"><strong>Discipline:</strong> ${disciplineLabel}</p>
                 ${portfolio_url ? `<p style="color: white; font-size: 15px; margin: 4px 0 0;"><strong>Portfolio:</strong> <a href="${portfolio_url}" style="color: #7b61ff;">${portfolio_url}</a></p>` : ""}
               </div>
+              `}
+
               <p style="color: #aaa; font-size: 13px; margin: 0; line-height: 1.6;">
                 Free education. Real knowledge. No exceptions.<br/>
                 — The Blacksky Team
@@ -103,7 +182,7 @@ async function confirmApplication(
         html: `
           <div style="font-family: system-ui, sans-serif; max-width: 560px; margin: 0 auto;">
             <h2 style="color: #1a1a2e;">New Application Received</h2>
-            <p style="color: #555;">The applicant confirmed their email address.</p>
+            <p style="color: #555;">The applicant confirmed their email address. An applicant portal account has been created.</p>
             <table style="width: 100%; border-collapse: collapse;">
               <tr><td style="padding: 8px; color: #666; width: 140px;">Name</td><td style="padding: 8px; font-weight: 600;">${name}</td></tr>
               <tr style="background:#f5f5f5"><td style="padding: 8px; color: #666;">Email</td><td style="padding: 8px;">${email}</td></tr>
@@ -183,7 +262,7 @@ export default async function ConfirmApplicationPage({
           </h1>
           <p style={{ fontSize: "16px", color: "#a0a0c0", lineHeight: 1.75, marginBottom: "32px" }}>
             {isUsed
-              ? "Your application has already been confirmed — you're all set. We'll be in touch soon."
+              ? "Your application has already been confirmed — you're all set. Check your email for your portal login details."
               : "We couldn't process your confirmation. Please try again or reach out to us for help."}
           </p>
           <a href="/" style={{ backgroundColor: "#7b61ff", color: "white", textDecoration: "none", fontWeight: 700, fontSize: "15px", padding: "14px 32px", borderRadius: "8px", display: "inline-block" }}>
@@ -194,7 +273,7 @@ export default async function ConfirmApplicationPage({
     );
   }
 
-  // Success — application officially submitted
+  // Success — application officially submitted, account created
   return (
     <main style={mainStyle}>
       <div style={{ textAlign: "center", maxWidth: "520px" }}>
@@ -203,13 +282,16 @@ export default async function ConfirmApplicationPage({
           {result.name ? `You're in, ${result.name}.` : "Application submitted."}
         </h1>
         <p style={{ fontSize: "18px", color: "#a0a0c0", lineHeight: 1.75, marginBottom: "12px" }}>
-          Your application has been officially submitted. We review every application personally and will be in touch within a few days.
+          Your application is officially submitted. We sent your portal login details to your email — you can log in to update your application any time.
         </p>
         <p style={{ fontSize: "14px", color: "#606080", marginBottom: "40px" }}>
           Free education. Real knowledge. No exceptions.
         </p>
-        <a href="/" style={{ backgroundColor: "#7b61ff", color: "white", textDecoration: "none", fontWeight: 700, fontSize: "15px", padding: "14px 32px", borderRadius: "8px", display: "inline-block" }}>
-          Back to Home
+        <a
+          href={`${process.env.NEXT_PUBLIC_DIRECTUS_URL}/admin`}
+          style={{ backgroundColor: "#7b61ff", color: "white", textDecoration: "none", fontWeight: 700, fontSize: "15px", padding: "14px 32px", borderRadius: "8px", display: "inline-block" }}
+        >
+          Log In to Your Portal →
         </a>
       </div>
     </main>

@@ -8,11 +8,12 @@
  * Covers:
  *  - Missing token → 400
  *  - Token not found / already used → 404
- *  - Happy path: finds application, flips status to pending, clears token,
- *    sends admin notification, returns 200 with applicant's first name
+ *  - Happy path: finds application, creates applicant user, flips status to
+ *    pending, clears token, links user, sends 2 emails, returns 200 + first name
  *  - Directus update failure → 500
  *  - Directus search failure → 500
- *  - Admin email is sent only on success
+ *  - User creation failure is non-fatal (still confirms application)
+ *  - Emails sent only on success
  */
 
 import { NextRequest } from "next/server";
@@ -36,6 +37,7 @@ import { GET } from "@/app/api/confirm-application/route";
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const TEST_TOKEN = "abc123def456";
+const NEW_USER_ID = "user-uuid-999";
 
 const mockApplication = {
   id: 7,
@@ -62,6 +64,19 @@ function searchHit() {
 /** Directus search returns no results (token not found / already used) */
 function searchMiss() {
   return { ok: true, json: async () => ({ data: [] }) };
+}
+
+/** Directus POST /users succeeds */
+function createUserOk() {
+  return { ok: true, json: async () => ({ data: { id: NEW_USER_ID } }) };
+}
+
+/** Directus POST /users fails (e.g. duplicate email) */
+function createUserFail(code = "INTERNAL_ERROR") {
+  return {
+    ok: false,
+    json: async () => ({ errors: [{ extensions: { code } }] }),
+  };
 }
 
 /** Directus PATCH succeeds */
@@ -115,7 +130,7 @@ describe("GET /api/confirm-application — invalid or used token", () => {
   it("does not attempt to PATCH Directus when token is not found", async () => {
     mockFetch.mockResolvedValueOnce(searchMiss());
     await GET(makeRequest(TEST_TOKEN));
-    // Only one fetch call (the search) — no PATCH
+    // Only one fetch call (the search) — no user creation or PATCH
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });
@@ -125,8 +140,9 @@ describe("GET /api/confirm-application — invalid or used token", () => {
 describe("GET /api/confirm-application — success", () => {
   beforeEach(() => {
     mockFetch
-      .mockResolvedValueOnce(searchHit())  // search by token
-      .mockResolvedValueOnce(patchOk());   // PATCH status
+      .mockResolvedValueOnce(searchHit())    // [0] search by token
+      .mockResolvedValueOnce(createUserOk()) // [1] POST /users
+      .mockResolvedValueOnce(patchOk());     // [2] PATCH application
   });
 
   it("returns 200 with success true", async () => {
@@ -150,10 +166,27 @@ describe("GET /api/confirm-application — success", () => {
     expect(searchUrl).toContain("awaiting_confirmation");
   });
 
+  it("creates a Directus user via POST /users", async () => {
+    await GET(makeRequest(TEST_TOKEN));
+    const [createUrl, createOpts] = mockFetch.mock.calls[1] as [string, RequestInit];
+    expect(createUrl).toContain("/users");
+    expect(createOpts.method).toBe("POST");
+  });
+
+  it("creates the user with the applicant's email and name", async () => {
+    await GET(makeRequest(TEST_TOKEN));
+    const createBody = JSON.parse(
+      (mockFetch.mock.calls[1][1] as RequestInit).body as string
+    );
+    expect(createBody.email).toBe(mockApplication.email);
+    expect(createBody.first_name).toBe("Jordan");
+    expect(createBody.last_name).toBe("Lee");
+  });
+
   it("patches the application to status 'pending'", async () => {
     await GET(makeRequest(TEST_TOKEN));
     const patchBody = JSON.parse(
-      (mockFetch.mock.calls[1][1] as RequestInit).body as string
+      (mockFetch.mock.calls[2][1] as RequestInit).body as string
     );
     expect(patchBody.status).toBe("pending");
   });
@@ -161,14 +194,22 @@ describe("GET /api/confirm-application — success", () => {
   it("clears the confirmation_token on the application", async () => {
     await GET(makeRequest(TEST_TOKEN));
     const patchBody = JSON.parse(
-      (mockFetch.mock.calls[1][1] as RequestInit).body as string
+      (mockFetch.mock.calls[2][1] as RequestInit).body as string
     );
     expect(patchBody.confirmation_token).toBeNull();
   });
 
+  it("links the new user id to the application", async () => {
+    await GET(makeRequest(TEST_TOKEN));
+    const patchBody = JSON.parse(
+      (mockFetch.mock.calls[2][1] as RequestInit).body as string
+    );
+    expect(patchBody.applicant_user_id).toBe(NEW_USER_ID);
+  });
+
   it("patches the correct application by id", async () => {
     await GET(makeRequest(TEST_TOKEN));
-    const patchUrl = mockFetch.mock.calls[1][0] as string;
+    const patchUrl = mockFetch.mock.calls[2][0] as string;
     expect(patchUrl).toContain(String(mockApplication.id));
   });
 
@@ -204,6 +245,42 @@ describe("GET /api/confirm-application — success", () => {
   });
 });
 
+// ─── User creation failure is non-fatal ──────────────────────────────────────
+
+describe("GET /api/confirm-application — user creation failure (non-fatal)", () => {
+  it("still confirms the application if user creation fails", async () => {
+    mockFetch
+      .mockResolvedValueOnce(searchHit())
+      .mockResolvedValueOnce(createUserFail())
+      .mockResolvedValueOnce(patchOk());
+    const res = await GET(makeRequest(TEST_TOKEN));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.success).toBe(true);
+  });
+
+  it("still sends both emails even if user creation fails", async () => {
+    mockFetch
+      .mockResolvedValueOnce(searchHit())
+      .mockResolvedValueOnce(createUserFail())
+      .mockResolvedValueOnce(patchOk());
+    await GET(makeRequest(TEST_TOKEN));
+    expect(mockSendEmail).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not set applicant_user_id when user creation fails", async () => {
+    mockFetch
+      .mockResolvedValueOnce(searchHit())
+      .mockResolvedValueOnce(createUserFail())
+      .mockResolvedValueOnce(patchOk());
+    await GET(makeRequest(TEST_TOKEN));
+    const patchBody = JSON.parse(
+      (mockFetch.mock.calls[2][1] as RequestInit).body as string
+    );
+    expect(patchBody.applicant_user_id).toBeUndefined();
+  });
+});
+
 // ─── Directus search failure ──────────────────────────────────────────────────
 
 describe("GET /api/confirm-application — Directus search failure", () => {
@@ -228,6 +305,7 @@ describe("GET /api/confirm-application — Directus PATCH failure", () => {
   it("returns 500 when the status update fails", async () => {
     mockFetch
       .mockResolvedValueOnce(searchHit())
+      .mockResolvedValueOnce(createUserOk())
       .mockResolvedValueOnce(patchFail());
     const res = await GET(makeRequest(TEST_TOKEN));
     expect(res.status).toBe(500);
@@ -235,9 +313,10 @@ describe("GET /api/confirm-application — Directus PATCH failure", () => {
     expect(json.error).toBe("server_error");
   });
 
-  it("does not send admin email when PATCH fails", async () => {
+  it("does not send emails when PATCH fails", async () => {
     mockFetch
       .mockResolvedValueOnce(searchHit())
+      .mockResolvedValueOnce(createUserOk())
       .mockResolvedValueOnce(patchFail());
     await GET(makeRequest(TEST_TOKEN));
     expect(mockSendEmail).not.toHaveBeenCalled();
