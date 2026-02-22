@@ -1,12 +1,16 @@
 import { createDirectus, rest, readItems } from '@directus/sdk';
 
-type Class = {
+export type Class = {
   id: number;
   name: string;
   description: string;
   discipline: 'media' | 'tech' | 'business' | 'arts';
-  status: string;
-  date_created: string;
+  /** M2O — assigned teacher (any Directus user) */
+  teacher?: { id: string; first_name: string; last_name: string } | null;
+  /** O2M — enrolled (approved) students whose class_id = this class */
+  students?: { id: string; first_name: string; last_name: string }[];
+  /** O2M — pending applications whose selected_class = this class */
+  pending_applicants?: { id: number; name: string; status: string }[];
 };
 
 type Schema = {
@@ -19,9 +23,9 @@ const directus = createDirectus<Schema>(
 
 export async function getCourses(): Promise<Class[]> {
   try {
+    // Note: the classes collection has no status field — all classes are returned
     const items = await directus.request(
       readItems('classes', {
-        filter: { status: { _eq: 'published' } },
         sort: ['name'],
       })
     );

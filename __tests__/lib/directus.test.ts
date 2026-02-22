@@ -25,8 +25,8 @@ import directusClient, { getCourses } from "@/lib/directus";
 import { readItems } from "@directus/sdk";
 
 const mockCourses = [
-  { id: 1, name: "LLM 101", discipline: "tech", status: "published", description: "Intro", date_created: "2024-01-01" },
-  { id: 2, name: "Media Foundations", discipline: "media", status: "published", description: "Stories", date_created: "2024-01-02" },
+  { id: 1, name: "LLM 101", discipline: "tech", description: "Intro" },
+  { id: 2, name: "Media Foundations", discipline: "media", description: "Stories" },
 ];
 
 let mockRequest: jest.SpyInstance;
@@ -68,7 +68,6 @@ describe("getCourses — success", () => {
     expect(course).toHaveProperty("id");
     expect(course).toHaveProperty("name");
     expect(course).toHaveProperty("discipline");
-    expect(course).toHaveProperty("status");
     expect(course).toHaveProperty("description");
   });
 });
@@ -92,10 +91,10 @@ describe("getCourses — query", () => {
     expect(readItemsCall[0]).toBe("classes");
   });
 
-  it("filters by status = 'published'", async () => {
+  it("does not filter by status (classes collection has no status field)", async () => {
     await getCourses();
     const readItemsCall = (readItems as jest.Mock).mock.calls[0];
-    expect(readItemsCall[1].filter).toEqual({ status: { _eq: "published" } });
+    expect(readItemsCall[1].filter).toBeUndefined();
   });
 
   it("sorts results by name", async () => {

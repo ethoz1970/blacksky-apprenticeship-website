@@ -71,42 +71,88 @@ export async function POST(req: NextRequest) {
     }
 
     const { data: application } = await appRes.json();
-    const { name, email, discipline } = application;
+    const { name, email, discipline, selected_class, applicant_user_id } = application;
     const firstName = name.split(" ")[0];
     const disciplineLabel = disciplineLabels[discipline] || discipline;
 
     if (newStatus === "approved") {
-      // --- Create Directus user account ---
       const tempPassword = generateTempPassword();
       const nameParts = name.trim().split(/\s+/);
       const firstName_ = nameParts[0];
       const lastName_ = nameParts.slice(1).join(" ") || "";
 
-      const createUserRes = await fetch(`${DIRECTUS_URL}/users`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${DIRECTUS_TOKEN}`,
-        },
-        body: JSON.stringify({
-          first_name: firstName_,
-          last_name: lastName_,
-          email,
-          password: tempPassword,
-          role: STUDENT_ROLE_ID,
-          status: "active",
-        }),
-      });
+      // --- Upgrade applicant account to Student, or create fresh Student account ---
+      // Applicants already have a Directus account (created at email confirmation).
+      // On approval we promote that account to the Student role and assign their class.
+      let studentUserId: string | null = applicant_user_id ?? null;
 
-      if (!createUserRes.ok) {
-        const err = await createUserRes.json();
-        // If user already exists, don't fail — just send the email
-        if (err?.errors?.[0]?.extensions?.code !== "RECORD_NOT_UNIQUE") {
-          console.error("Failed to create Directus user:", err);
-          return NextResponse.json(
-            { message: "Failed to create student account" },
-            { status: 500 }
+      if (studentUserId) {
+        // Promote existing Applicant account → Student
+        await fetch(`${DIRECTUS_URL}/users/${studentUserId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${DIRECTUS_TOKEN}`,
+          },
+          body: JSON.stringify({
+            role: STUDENT_ROLE_ID,
+            ...(selected_class ? { class_id: selected_class } : {}),
+          }),
+        });
+      } else {
+        // No applicant account found — create a new Student account
+        const createUserRes = await fetch(`${DIRECTUS_URL}/users`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${DIRECTUS_TOKEN}`,
+          },
+          body: JSON.stringify({
+            first_name: firstName_,
+            last_name: lastName_,
+            email,
+            password: tempPassword,
+            role: STUDENT_ROLE_ID,
+            status: "active",
+            ...(selected_class ? { class_id: selected_class } : {}),
+          }),
+        });
+
+        if (createUserRes.ok) {
+          const { data: newUser } = await createUserRes.json();
+          studentUserId = newUser?.id ?? null;
+        } else {
+          const err = await createUserRes.json();
+          const isDuplicate = err?.errors?.[0]?.extensions?.code === "RECORD_NOT_UNIQUE";
+          if (!isDuplicate) {
+            console.error("Failed to create Directus user:", err);
+            return NextResponse.json(
+              { message: "Failed to create student account" },
+              { status: 500 }
+            );
+          }
+          // Duplicate — look up existing user by email and promote them
+          const lookupRes = await fetch(
+            `${DIRECTUS_URL}/users?filter[email][_eq]=${encodeURIComponent(email)}&limit=1`,
+            { headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` } }
           );
+          if (lookupRes.ok) {
+            const { data: found } = await lookupRes.json();
+            if (found?.[0]?.id) {
+              studentUserId = found[0].id;
+              await fetch(`${DIRECTUS_URL}/users/${studentUserId}`, {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${DIRECTUS_TOKEN}`,
+                },
+                body: JSON.stringify({
+                  role: STUDENT_ROLE_ID,
+                  ...(selected_class ? { class_id: selected_class } : {}),
+                }),
+              });
+            }
+          }
         }
       }
 
