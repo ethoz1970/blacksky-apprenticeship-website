@@ -77,9 +77,9 @@ export default async function HomePage() {
             fontSize: "clamp(44px, 7vw, 84px)", fontWeight: 800,
             lineHeight: 1.05, letterSpacing: "-0.03em", marginBottom: "28px", color: "white",
           }}>
-            The oldest form of{" "}
+            The future of{" "}
             <span className="learning-word">learning</span>
-            ,<br />built for the future.
+            .
           </h1>
 
           <p style={{
