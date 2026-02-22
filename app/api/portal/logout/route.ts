@@ -10,5 +10,6 @@ export async function POST(req: NextRequest) {
   response.cookies.delete("directus_token");
   response.cookies.delete("directus_refresh");
   response.cookies.delete("portal_role");
+  response.cookies.delete("portal_name");
   return response;
 }

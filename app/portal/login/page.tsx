@@ -143,6 +143,13 @@ export default function PortalLoginPage() {
               {state === "loading" ? "Signing in…" : "Sign in"}
             </button>
           </form>
+
+          <p style={{ marginTop: "32px", textAlign: "center", fontSize: "14px", color: "#505070" }}>
+            New here?{" "}
+            <a href="/apply" style={{ color: "#7b61ff", textDecoration: "none", fontWeight: 600 }}>
+              Apply for free →
+            </a>
+          </p>
         </div>
       </div>
     </main>

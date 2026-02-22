@@ -122,9 +122,15 @@ export default function ApplyPage() {
       `}</style>
 
       {/* Nav */}
-      <nav className="apply-nav" style={{ padding: "20px 40px", borderBottom: "1px solid rgba(123,97,255,0.1)" }}>
+      <nav className="apply-nav" style={{
+        padding: "20px 40px", borderBottom: "1px solid rgba(123,97,255,0.1)",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
         <a href="/" className="logo-link" style={{ fontSize: "17px", fontWeight: 700, color: "#f0eeff", textDecoration: "none" }}>
           Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
+        </a>
+        <a href="/portal/login" style={{ fontSize: "13px", color: "#606080", textDecoration: "none" }}>
+          Already applied? <span style={{ color: "#7b61ff", fontWeight: 600 }}>Sign in →</span>
         </a>
       </nav>
 

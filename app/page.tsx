@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { getCourses } from "@/lib/directus";
 
 const disciplineColors: Record<string, string> = {
@@ -10,6 +11,26 @@ const disciplineColors: Record<string, string> = {
 export const revalidate = 60;
 
 export default async function HomePage() {
+  const cookieStore = await cookies();
+  const token      = cookieStore.get("directus_token")?.value;
+  const role       = cookieStore.get("portal_role")?.value;
+  const firstName  = cookieStore.get("portal_name")?.value;
+
+  const isLoggedIn = !!token;
+  const isTeacher  = role === "teacher";
+  const isStudent  = role === "student";
+
+  // Determine portal destination and labels
+  const portalHref  = isTeacher ? "/portal/teacher" : isStudent ? "/portal/student" : "/portal";
+  const portalLabel = isTeacher ? "My Dashboard" : "My Portal";
+
+  // Hero CTA copy
+  let heroCtaHref  = "/apply";
+  let heroCtaLabel = "Apply Now";
+  if (isTeacher) { heroCtaHref = "/portal/teacher"; heroCtaLabel = "Go to My Dashboard"; }
+  else if (isStudent) { heroCtaHref = "/portal/student"; heroCtaLabel = "Go to My Portal"; }
+  else if (isLoggedIn) { heroCtaHref = "/portal"; heroCtaLabel = "Check Your Status"; }
+
   const courses = await getCourses();
 
   return (
@@ -26,6 +47,8 @@ export default async function HomePage() {
           .courses-grid  { grid-template-columns: 1fr !important; }
           .cta-btn-lg    { padding: 16px 32px !important; font-size: 16px !important; width: 100%; box-sizing: border-box; text-align: center; }
           .footer-pad    { padding: 28px 20px !important; }
+          .nav-links     { gap: 16px !important; }
+          .nav-signin    { display: none !important; }
         }
       `}</style>
 
@@ -38,11 +61,44 @@ export default async function HomePage() {
         backdropFilter: "blur(12px)",
         borderBottom: "1px solid rgba(123,97,255,0.15)",
       }}>
-        <a href="#" className="logo-link" style={{ fontSize: "18px", fontWeight: 700, color: "#f0eeff", letterSpacing: "-0.02em" }}>
+        <a href="#" style={{ fontSize: "18px", fontWeight: 700, color: "#f0eeff", letterSpacing: "-0.02em", textDecoration: "none" }}>
           Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
         </a>
-        <div style={{ display: "flex", gap: "32px", alignItems: "center" }}>
+
+        <div className="nav-links" style={{ display: "flex", gap: "24px", alignItems: "center" }}>
           <a href="#courses" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Courses</a>
+
+          {isLoggedIn ? (
+            /* Logged-in state */
+            <>
+              {firstName && (
+                <span className="nav-signin" style={{ fontSize: "13px", color: "#606080" }}>
+                  Hey, {firstName}
+                </span>
+              )}
+              <a href={portalHref} style={{
+                backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
+                fontWeight: 700, fontSize: "13px", padding: "8px 18px",
+                borderRadius: "6px", whiteSpace: "nowrap",
+              }}>
+                {portalLabel} →
+              </a>
+            </>
+          ) : (
+            /* Guest state */
+            <>
+              <a className="nav-signin" href="/portal/login" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>
+                Sign In
+              </a>
+              <a href="/apply" style={{
+                backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
+                fontWeight: 700, fontSize: "13px", padding: "8px 18px",
+                borderRadius: "6px",
+              }}>
+                Apply
+              </a>
+            </>
+          )}
         </div>
       </nav>
 
@@ -92,12 +148,15 @@ export default async function HomePage() {
           </p>
 
           <div style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="/apply" style={{
+            {/* Primary CTA — context-aware */}
+            <a href={heroCtaHref} style={{
               backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
               fontWeight: 700, fontSize: "16px", padding: "16px 36px", borderRadius: "8px",
             }}>
-              Apply Now
+              {heroCtaLabel}
             </a>
+
+            {/* Secondary — always Browse Courses */}
             <a href="#courses" style={{
               backgroundColor: "rgba(123,97,255,0.08)",
               border: "1px solid rgba(123,97,255,0.25)",
@@ -107,6 +166,16 @@ export default async function HomePage() {
               Courses
             </a>
           </div>
+
+          {/* Subtle sign-in nudge for guests */}
+          {!isLoggedIn && (
+            <p style={{ marginTop: "28px", fontSize: "13px", color: "#505070" }}>
+              Already applied?{" "}
+              <a href="/portal/login" style={{ color: "#7b61ff", textDecoration: "none", fontWeight: 600 }}>
+                Sign in to check your status →
+              </a>
+            </p>
+          )}
         </div>
 
         {/* Discipline pills */}
@@ -298,26 +367,55 @@ export default async function HomePage() {
           pointerEvents: "none",
         }} />
         <div style={{ position: "relative", maxWidth: "620px", margin: "0 auto" }}>
-          <h2 style={{
-            fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 800, color: "white",
-            letterSpacing: "-0.02em", marginBottom: "20px",
-          }}>
-            Ready to learn?
-          </h2>
-          <p style={{ fontSize: "18px", color: "#a0a0c0", lineHeight: 1.75, marginBottom: "48px" }}>
-            It&apos;s free. It&apos;s real. And it&apos;s built around the belief that
-            the right knowledge, in the right hands, changes everything.
-          </p>
-          <a href="/apply" className="cta-btn-lg" style={{
-            backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
-            fontWeight: 700, fontSize: "18px", padding: "20px 52px",
-            borderRadius: "10px", display: "inline-block",
-          }}>
-            Apply Now
-          </a>
-          <p style={{ fontSize: "13px", color: "#606080", marginTop: "20px" }}>
-            No tuition. No prerequisites. Just show up ready to learn.
-          </p>
+          {isLoggedIn ? (
+            /* Logged-in variant */
+            <>
+              <h2 style={{
+                fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 800, color: "white",
+                letterSpacing: "-0.02em", marginBottom: "20px",
+              }}>
+                {isStudent ? "Keep learning." : isTeacher ? "Shape the next generation." : "Your journey continues."}
+              </h2>
+              <p style={{ fontSize: "18px", color: "#a0a0c0", lineHeight: 1.75, marginBottom: "48px" }}>
+                {isStudent
+                  ? "Head to your portal to access your class, materials, and teacher."
+                  : isTeacher
+                  ? "Your dashboard has everything you need to manage your class."
+                  : "Check your application status and see what's next for you."}
+              </p>
+              <a href={portalHref} className="cta-btn-lg" style={{
+                backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
+                fontWeight: 700, fontSize: "18px", padding: "20px 52px",
+                borderRadius: "10px", display: "inline-block",
+              }}>
+                {portalLabel} →
+              </a>
+            </>
+          ) : (
+            /* Guest variant */
+            <>
+              <h2 style={{
+                fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 800, color: "white",
+                letterSpacing: "-0.02em", marginBottom: "20px",
+              }}>
+                Ready to learn?
+              </h2>
+              <p style={{ fontSize: "18px", color: "#a0a0c0", lineHeight: 1.75, marginBottom: "48px" }}>
+                It&apos;s free. It&apos;s real. And it&apos;s built around the belief that
+                the right knowledge, in the right hands, changes everything.
+              </p>
+              <a href="/apply" className="cta-btn-lg" style={{
+                backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
+                fontWeight: 700, fontSize: "18px", padding: "20px 52px",
+                borderRadius: "10px", display: "inline-block",
+              }}>
+                Apply Now
+              </a>
+              <p style={{ fontSize: "13px", color: "#606080", marginTop: "20px" }}>
+                No tuition. No prerequisites. Just show up ready to learn.
+              </p>
+            </>
+          )}
         </div>
       </section>
 
@@ -330,9 +428,16 @@ export default async function HomePage() {
         <span style={{ fontSize: "15px", fontWeight: 700, color: "#f0eeff" }}>
           Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
         </span>
-        <span style={{ fontSize: "13px", color: "#606080" }}>
-          Free education. Real knowledge. No exceptions.
-        </span>
+        <div style={{ display: "flex", gap: "24px", alignItems: "center" }}>
+          <span style={{ fontSize: "13px", color: "#606080" }}>
+            Free education. Real knowledge. No exceptions.
+          </span>
+          {!isLoggedIn && (
+            <a href="/portal/login" style={{ fontSize: "13px", color: "#a0a0c0", textDecoration: "none" }}>
+              Sign In
+            </a>
+          )}
+        </div>
       </footer>
 
     </main>

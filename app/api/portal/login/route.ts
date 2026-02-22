@@ -74,6 +74,17 @@ export async function POST(req: NextRequest) {
       path: "/",
     });
 
+    // Store first name for homepage greeting (avoids an extra Directus fetch per page view)
+    if (user?.first_name) {
+      response.cookies.set("portal_name", user.first_name, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24,
+        path: "/",
+      });
+    }
+
     if (refresh_token) {
       response.cookies.set("directus_refresh", refresh_token, {
         httpOnly: true,
