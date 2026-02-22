@@ -1,38 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import MaterialForm from "./MaterialForm";
-import MaterialRow from "./MaterialRow";
+import ClassSection from "./ClassSection";
 
 const DIRECTUS_URL =
   process.env.NEXT_PUBLIC_DIRECTUS_URL ||
   "https://directus-production-21fe.up.railway.app";
 
-const disciplineColors: Record<string, string> = {
-  media: "#ff6b6b",
-  tech: "#7b61ff",
-  business: "#61d4ff",
-  arts: "#ffd761",
-};
-
-
-type Student = { id: string; first_name: string; last_name?: string };
-type Material = {
-  id: number;
-  title: string;
-  type: string;
-  description?: string | null;
-  url?: string | null;
-  file?: { id: string; filename_download: string } | null;
-  date_created?: string;
-};
-type Class = {
-  id: number;
-  name: string;
-  description?: string;
-  discipline: string;
-  students?: Student[];
-  materials?: Material[];
-};
+import type { ClassData } from "./ClassSection";
 
 export default async function TeacherPortalPage() {
   const cookieStore = await cookies();
@@ -68,7 +42,7 @@ export default async function TeacherPortalPage() {
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   );
 
-  let classes: Class[] = [];
+  let classes: ClassData[] = [];
   if (classRes.ok) {
     const classJson = await classRes.json();
     classes = classJson.data || [];
@@ -136,7 +110,7 @@ export default async function TeacherPortalPage() {
             </p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {classes.map((cls) => (
               <ClassSection key={cls.id} cls={cls} />
             ))}
@@ -147,99 +121,6 @@ export default async function TeacherPortalPage() {
   );
 }
 
-function ClassSection({ cls }: { cls: Class }) {
-  const color = disciplineColors[cls.discipline] || "#7b61ff";
-  const students = cls.students || [];
-  const materials = cls.materials || [];
-
-  return (
-    <div>
-      {/* Class header */}
-      <div style={{
-        backgroundColor: "rgba(26,26,46,0.6)",
-        border: "1px solid rgba(123,97,255,0.15)",
-        borderRadius: "12px", padding: "28px 32px",
-        marginBottom: "32px",
-      }}>
-        <div style={{
-          display: "inline-block",
-          backgroundColor: `${color}15`,
-          border: `1px solid ${color}35`,
-          borderRadius: "100px", padding: "4px 12px",
-          fontSize: "11px", fontWeight: 600, color: color,
-          textTransform: "capitalize", marginBottom: "12px",
-        }}>
-          {cls.discipline}
-        </div>
-        <h2 style={{ fontSize: "26px", fontWeight: 800, color: "white", margin: "0 0 8px", letterSpacing: "-0.01em" }}>
-          {cls.name}
-        </h2>
-        {cls.description && (
-          <p style={{ color: "#a0a0c0", fontSize: "15px", lineHeight: 1.7, margin: 0 }}>{cls.description}</p>
-        )}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "32px" }}>
-        {/* Students column */}
-        <div>
-          <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#f0eeff", marginBottom: "16px" }}>
-            Students ({students.length})
-          </h3>
-          {students.length === 0 ? (
-            <p style={{ color: "#606080", fontSize: "14px" }}>No students enrolled yet.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {students.map((s) => (
-                <div key={s.id} style={{
-                  backgroundColor: "rgba(26,26,46,0.4)",
-                  border: "1px solid rgba(123,97,255,0.1)",
-                  borderRadius: "8px", padding: "10px 14px",
-                  fontSize: "14px", color: "#d0d0e8",
-                  display: "flex", alignItems: "center", gap: "10px",
-                }}>
-                  <span style={{
-                    width: "28px", height: "28px", borderRadius: "50%",
-                    backgroundColor: "rgba(123,97,255,0.2)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "12px", fontWeight: 700, color: "#a590ff",
-                    flexShrink: 0,
-                  }}>
-                    {(s.first_name || "?")[0].toUpperCase()}
-                  </span>
-                  {s.first_name} {s.last_name || ""}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Materials column */}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#f0eeff", margin: 0 }}>
-              Materials ({materials.length})
-            </h3>
-          </div>
-
-          {/* Add Material Form */}
-          <div style={{ marginBottom: "16px" }}>
-            <MaterialForm classId={cls.id} />
-          </div>
-
-          {materials.length === 0 ? (
-            <p style={{ color: "#606080", fontSize: "14px" }}>No materials posted yet.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {materials.map((m) => (
-                <MaterialRow key={m.id} material={m} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 
 function NavAvatar({ avatarId, name }: { avatarId: string | null; name: string }) {
