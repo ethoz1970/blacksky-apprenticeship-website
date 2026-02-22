@@ -52,6 +52,7 @@ type User = {
   first_name: string;
   last_name?: string;
   class_id?: number | null;
+  avatar?: string | null;
 };
 
 export default async function StudentPortalPage() {
@@ -75,7 +76,7 @@ export default async function StudentPortalPage() {
 
   // Fetch the current user (no role.name needed — we already have it from cookie)
   const meRes = await fetch(
-    `${DIRECTUS_URL}/users/me?fields[]=id,first_name,last_name,class_id`,
+    `${DIRECTUS_URL}/users/me?fields[]=id,first_name,last_name,class_id,avatar`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   );
 
@@ -114,10 +115,14 @@ export default async function StudentPortalPage() {
         <a href="/" style={{ fontSize: "17px", fontWeight: 700, color: "#f0eeff", textDecoration: "none" }}>
           Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
         </a>
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <span style={{ fontSize: "14px", color: "#a0a0c0" }}>
-            {user.first_name} {user.last_name || ""}
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <a href="/portal/profile" style={{
+            display: "flex", alignItems: "center", gap: "10px",
+            textDecoration: "none", color: "#a0a0c0",
+          }}>
+            <NavAvatar avatarId={user.avatar ?? null} name={user.first_name || "?"} />
+            <span style={{ fontSize: "14px" }}>{user.first_name} {user.last_name || ""}</span>
+          </a>
           <form action="/api/portal/logout" method="POST">
             <button type="submit" style={{
               backgroundColor: "transparent",
@@ -303,6 +308,29 @@ function MaterialCard({ material }: { material: Material }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function NavAvatar({ avatarId, name }: { avatarId: string | null; name: string }) {
+  if (avatarId) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={`/api/portal/files/${avatarId}`}
+        alt="avatar"
+        style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(123,97,255,0.3)", flexShrink: 0 }}
+      />
+    );
+  }
+  return (
+    <span style={{
+      width: 28, height: 28, borderRadius: "50%",
+      backgroundColor: "rgba(123,97,255,0.2)",
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      fontSize: "12px", fontWeight: 700, color: "#a590ff", flexShrink: 0,
+    }}>
+      {name[0]?.toUpperCase() || "?"}
+    </span>
   );
 }
 
