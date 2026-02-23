@@ -68,6 +68,7 @@ export default async function HomePage() {
 
         <div className="nav-links" style={{ display: "flex", gap: "24px", alignItems: "center" }}>
           <a href="#courses" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Courses</a>
+          <a className="nav-signin" href="/donate" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Donate</a>
 
           {isLoggedIn ? (
             /* Logged-in state */
