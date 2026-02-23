@@ -1,6 +1,7 @@
 import React from "react";
 import { cookies } from "next/headers";
 import { getCourses } from "@/lib/directus";
+import CourseCard from "@/app/CourseCard";
 
 const disciplineColors: Record<string, string> = {
   media: "#ff6b6b",
@@ -45,7 +46,7 @@ export default async function HomePage() {
           .section-pad   { padding: 72px 20px !important; }
           .blockquote    { padding: 24px 20px !important; margin-top: 40px !important; }
           .why-section   { padding: 60px 20px !important; }
-          .courses-grid  { grid-template-columns: 1fr !important; }
+          .courses-grid  { grid-template-columns: 1fr !important; gap: 20px !important; }
           .cta-btn-lg    { padding: 16px 32px !important; font-size: 16px !important; width: 100%; box-sizing: border-box; text-align: center; }
           .footer-pad    { padding: 28px 20px !important; }
           .nav-links     { gap: 16px !important; }
@@ -289,91 +290,30 @@ export default async function HomePage() {
           Hands-on courses across four disciplines. All free. All built around real skills that matter.
         </p>
 
-        <div className="courses-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "24px" }}>
-          {courses.length > 0 ? courses.map((course) => (
-            <div key={course.id} style={{
-              backgroundColor: "rgba(26,26,46,0.6)",
-              border: "1px solid rgba(123,97,255,0.15)",
-              borderRadius: "12px", padding: "32px",
-              display: "flex", flexDirection: "column",
-              transition: "transform 0.2s ease, box-shadow 0.2s ease",
-            }}>
-              <div style={{
-                display: "inline-block",
-                backgroundColor: `${disciplineColors[course.discipline]}15`,
-                border: `1px solid ${disciplineColors[course.discipline]}35`,
-                borderRadius: "100px", padding: "4px 12px", fontSize: "11px",
-                color: disciplineColors[course.discipline], fontWeight: 600,
-                textTransform: "capitalize", marginBottom: "16px",
-                alignSelf: "flex-start",
-              }}>
-                {course.discipline}
-              </div>
-              <h3 style={{ fontSize: "19px", fontWeight: 700, color: "#f0eeff", marginBottom: "10px" }}>{course.name}</h3>
-              {course.description && (
-                <>
-                  <p style={{
-                    fontSize: "14px", color: "#a0a0c0", lineHeight: 1.7,
-                    display: "-webkit-box",
-                    WebkitLineClamp: 7,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                    marginBottom: "16px",
-                    flex: 1,
-                  } as React.CSSProperties}>
-                    {course.description}
-                  </p>
-                  <a href={`/courses/${course.id}`} style={{
-                    fontSize: "13px", color: "#7b61ff", fontWeight: 600,
-                    textDecoration: "none", alignSelf: "flex-start",
-                  }}>
-                    Read more →
-                  </a>
-                </>
-              )}
-            </div>
+        <div className="courses-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "32px" }}>
+          {courses.length > 0 ? courses.map((course, idx) => (
+            <CourseCard
+              key={course.id}
+              id={course.id}
+              name={course.name}
+              discipline={course.discipline}
+              description={course.description}
+              index={idx}
+            />
           )) : (
             <>
-              {/* Static LLM 101 card */}
-              <div style={{
-                backgroundColor: "rgba(26,26,46,0.6)",
-                border: "1px solid rgba(123,97,255,0.2)",
-                borderRadius: "12px", padding: "32px",
-              }}>
-                <div style={{
-                  display: "inline-block",
-                  backgroundColor: `${disciplineColors.tech}15`,
-                  border: `1px solid ${disciplineColors.tech}35`,
-                  borderRadius: "100px", padding: "4px 12px", fontSize: "11px",
-                  color: disciplineColors.tech, fontWeight: 600, marginBottom: "16px",
-                }}>
-                  Technology
-                </div>
-                <h3 style={{ fontSize: "19px", fontWeight: 700, color: "#f0eeff", marginBottom: "10px" }}>
-                  LLM 101: Language Models & You
-                </h3>
-                <p style={{ fontSize: "14px", color: "#a0a0c0", lineHeight: 1.7, marginBottom: "20px" }}>
-                  A two-week, no-code introduction to large language models and
-                  retrieval-augmented generation. Understand the systems. Build something real.
-                </p>
-                <span style={{ fontSize: "12px", color: "#606080", fontWeight: 500 }}>
-                  2 weeks · 4 sessions · No coding required
-                </span>
-              </div>
-
-              {/* Coming soon */}
+              <CourseCard id={0} name="LLM 101: Language Models & You" discipline="tech"
+                description="A two-week, no-code introduction to large language models and retrieval-augmented generation. Understand the systems. Build something real." index={0} />
               <div style={{
                 backgroundColor: "rgba(26,26,46,0.2)",
                 border: "1px dashed rgba(123,97,255,0.18)",
-                borderRadius: "12px", padding: "32px",
+                borderRadius: "16px",
                 display: "flex", flexDirection: "column",
                 alignItems: "center", justifyContent: "center",
-                textAlign: "center", minHeight: "200px",
+                textAlign: "center", minHeight: "340px",
               }}>
-                <div style={{ fontSize: "22px", color: "#3d2e7a", marginBottom: "12px" }}>+</div>
-                <p style={{ fontSize: "14px", color: "#606080", lineHeight: 1.6 }}>
-                  More courses coming soon across media, business, and the arts.
-                </p>
+                <div style={{ fontSize: "28px", color: "#3d2e7a", marginBottom: "14px" }}>+</div>
+                <p style={{ fontSize: "14px", color: "#606080", lineHeight: 1.6 }}>More courses coming soon.</p>
               </div>
             </>
           )}
