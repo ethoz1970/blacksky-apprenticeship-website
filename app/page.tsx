@@ -1,3 +1,4 @@
+import React from "react";
 import { cookies } from "next/headers";
 import { getCourses } from "@/lib/directus";
 
@@ -293,6 +294,7 @@ export default async function HomePage() {
               backgroundColor: "rgba(26,26,46,0.6)",
               border: "1px solid rgba(123,97,255,0.15)",
               borderRadius: "12px", padding: "32px",
+              display: "flex", flexDirection: "column",
               transition: "transform 0.2s ease, box-shadow 0.2s ease",
             }}>
               <div style={{
@@ -302,12 +304,31 @@ export default async function HomePage() {
                 borderRadius: "100px", padding: "4px 12px", fontSize: "11px",
                 color: disciplineColors[course.discipline], fontWeight: 600,
                 textTransform: "capitalize", marginBottom: "16px",
+                alignSelf: "flex-start",
               }}>
                 {course.discipline}
               </div>
               <h3 style={{ fontSize: "19px", fontWeight: 700, color: "#f0eeff", marginBottom: "10px" }}>{course.name}</h3>
               {course.description && (
-                <p style={{ fontSize: "14px", color: "#a0a0c0", lineHeight: 1.7 }}>{course.description}</p>
+                <>
+                  <p style={{
+                    fontSize: "14px", color: "#a0a0c0", lineHeight: 1.7,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 7,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    marginBottom: "16px",
+                    flex: 1,
+                  } as React.CSSProperties}>
+                    {course.description}
+                  </p>
+                  <a href={`/courses/${course.id}`} style={{
+                    fontSize: "13px", color: "#7b61ff", fontWeight: 600,
+                    textDecoration: "none", alignSelf: "flex-start",
+                  }}>
+                    Read more →
+                  </a>
+                </>
               )}
             </div>
           )) : (

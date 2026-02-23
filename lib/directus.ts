@@ -39,6 +39,26 @@ const directus = createDirectus<Schema>(
   process.env.NEXT_PUBLIC_DIRECTUS_URL || 'https://directus-production-21fe.up.railway.app'
 ).with(rest());
 
+export async function getCourse(id: number): Promise<Class | null> {
+  try {
+    const DIRECTUS_URL   = process.env.NEXT_PUBLIC_DIRECTUS_URL!;
+    const DIRECTUS_TOKEN = process.env.DIRECTUS_API_TOKEN!;
+
+    const res = await fetch(
+      `${DIRECTUS_URL}/items/classes/${id}?fields[]=id,name,discipline,description`,
+      {
+        headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` },
+        next: { revalidate: 60 },
+      }
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    return (json.data ?? null) as Class | null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getCourses(): Promise<Class[]> {
   try {
     // Use admin token so all classes are always returned regardless of public-role permissions.
