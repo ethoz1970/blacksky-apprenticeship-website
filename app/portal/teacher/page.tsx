@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import ClassSection from "./ClassSection";
+import PortalNav from "../PortalNav";
 
 const DIRECTUS_URL =
   process.env.NEXT_PUBLIC_DIRECTUS_URL ||
@@ -48,40 +49,21 @@ export default async function TeacherPortalPage() {
     classes = classJson.data || [];
   }
 
+  const tabs = [
+    { label: "Dashboard", href: "/portal/teacher" },
+    { label: "Community", href: "/portal/community" },
+    { label: "Messages", href: "/portal/messages" },
+  ];
+
   return (
     <main style={{ backgroundColor: "#0d0d1a", minHeight: "100vh", color: "#f0eeff" }}>
-      {/* Nav */}
-      <nav style={{
-        padding: "16px 40px",
-        borderBottom: "1px solid rgba(123,97,255,0.1)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        backgroundColor: "rgba(13,13,26,0.9)",
-        position: "sticky", top: 0, zIndex: 50,
-      }}>
-        <a href="/" style={{ fontSize: "17px", fontWeight: 700, color: "#f0eeff", textDecoration: "none" }}>
-          Blacksky<span style={{ color: "#7b61ff" }}> Up</span>
-        </a>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <a href="/portal/profile" style={{
-            display: "flex", alignItems: "center", gap: "10px",
-            textDecoration: "none", color: "#a0a0c0",
-          }}>
-            <NavAvatar avatarId={user.avatar ?? null} name={user.first_name || "?"} />
-            <span style={{ fontSize: "14px" }}>{user.first_name} {user.last_name || ""}</span>
-          </a>
-          <form action="/api/portal/logout" method="POST">
-            <button type="submit" style={{
-              backgroundColor: "transparent",
-              border: "1px solid rgba(123,97,255,0.3)",
-              borderRadius: "6px", color: "#a0a0c0",
-              cursor: "pointer", fontFamily: "inherit",
-              fontSize: "13px", padding: "6px 14px",
-            }}>
-              Sign out
-            </button>
-          </form>
-        </div>
-      </nav>
+      <PortalNav
+        tabs={tabs}
+        userId={user.id}
+        firstName={user.first_name}
+        avatarId={user.avatar ?? null}
+        role="teacher"
+      />
 
       <div style={{ maxWidth: "960px", margin: "0 auto", padding: "48px 40px" }}>
         {/* Header */}
