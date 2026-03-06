@@ -42,18 +42,22 @@ export default function PostFeed({ myId, myAvatar, myFirstName, classId, scope }
   async function loadConnections() {
     const res = await fetch("/api/portal/connections");
     if (res.ok) {
-      const { data } = await res.json();
-      // Normalize: get all connections with other user's ID and status
-      const accepted: Connection[] = (data.accepted ?? []).map((c: { id: number; requester: { id: string }; recipient: { id: string } }) => ({
-        id: c.id,
-        status: "accepted" as const,
-        other_user_id: c.requester.id === myId ? c.recipient.id : c.requester.id,
-      }));
-      const pending_sent: Connection[] = (data.pending_sent ?? []).map((c: { id: number; recipient: { id: string } }) => ({
-        id: c.id,
-        status: "pending" as const,
-        other_user_id: c.recipient.id,
-      }));
+      // Connections API returns { accepted, pending_sent, pending_received, my_id } directly (no data wrapper)
+      const json = await res.json();
+      const accepted: Connection[] = (json.accepted ?? [])
+        .filter((c: { requester?: { id: string }; recipient?: { id: string } }) => c.requester?.id && c.recipient?.id)
+        .map((c: { id: number; requester: { id: string }; recipient: { id: string } }) => ({
+          id: c.id,
+          status: "accepted" as const,
+          other_user_id: c.requester.id === myId ? c.recipient.id : c.requester.id,
+        }));
+      const pending_sent: Connection[] = (json.pending_sent ?? [])
+        .filter((c: { recipient?: { id: string } }) => c.recipient?.id)
+        .map((c: { id: number; recipient: { id: string } }) => ({
+          id: c.id,
+          status: "pending" as const,
+          other_user_id: c.recipient.id,
+        }));
       setConnections([...accepted, ...pending_sent]);
     }
   }
@@ -147,7 +151,11 @@ export default function PostFeed({ myId, myAvatar, myFirstName, classId, scope }
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {posts.map(post => {
-            const { connected, pending } = getConnectionStatus(post.author.id);
+            // Guard: author may be a bare UUID string on freshly-created posts
+            const authorId = typeof post.author === "object" && post.author !== null
+              ? post.author.id
+              : (post.author as unknown as string) ?? "";
+            const { connected, pending } = getConnectionStatus(authorId);
             return (
               <PostCard
                 key={post.id}

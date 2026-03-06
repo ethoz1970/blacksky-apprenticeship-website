@@ -83,8 +83,10 @@ export default function PostCard({ post, myId, myAvatar, myFirstName, isConnecte
   const [submitting, setSubmitting] = useState(false);
   const [connecting, setConnecting] = useState(false);
 
-  const isOwnPost = post.author.id === myId;
-  const authorName = `${post.author.first_name} ${post.author.last_name || ""}`.trim();
+  // author may be a bare UUID string on freshly-created posts before re-fetch completes
+  const author = typeof post.author === "object" && post.author !== null ? post.author : null;
+  const isOwnPost = author?.id === myId;
+  const authorName = author ? `${author.first_name} ${author.last_name || ""}`.trim() : "Member";
 
   async function loadComments() {
     if (commentsLoaded) return;
@@ -132,7 +134,7 @@ export default function PostCard({ post, myId, myAvatar, myFirstName, isConnecte
     }}>
       {/* Post header */}
       <div style={{ padding: "20px 20px 16px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
-        <Avatar avatarId={post.author.avatar} firstName={post.author.first_name} size={40} />
+        <Avatar avatarId={author?.avatar} firstName={author?.first_name ?? "?"} size={40} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
             <span style={{ fontSize: "14px", fontWeight: 700, color: "#e0d8ff" }}>{authorName}</span>
@@ -151,7 +153,7 @@ export default function PostCard({ post, myId, myAvatar, myFirstName, isConnecte
           </div>
 
           {/* Connect button — only for other users not yet connected */}
-          {!isOwnPost && !isConnected && (
+          {author && !isOwnPost && !isConnected && (
             <button
               onClick={handleConnect}
               disabled={connecting || connectionPending}
@@ -167,7 +169,7 @@ export default function PostCard({ post, myId, myAvatar, myFirstName, isConnecte
               {connecting ? "Sending…" : connectionPending ? "Request sent" : "+ Connect"}
             </button>
           )}
-          {!isOwnPost && isConnected && (
+          {author && !isOwnPost && isConnected && (
             <a href="/portal/messages" style={{
               display: "inline-block", marginTop: "6px",
               padding: "3px 12px", borderRadius: "100px", fontSize: "11px", fontWeight: 600,

@@ -70,5 +70,21 @@ export async function POST(req: NextRequest) {
 
   if (!res.ok) return NextResponse.json({ error: "Failed to create post" }, { status: res.status });
   const json = await res.json();
-  return NextResponse.json({ data: json.data }, { status: 201 });
+  const postId = json.data?.id;
+
+  // Re-fetch with expanded fields so the client gets a complete post object (author as object, not bare UUID)
+  const fullFields = [
+    "id", "date_created", "content", "scope", "class_id",
+    "link_url", "link_title", "link_description", "link_image",
+    "author.id", "author.first_name", "author.last_name", "author.avatar",
+    "image.id", "image.filename_download",
+    "attachment.id", "attachment.filename_download",
+  ].map(f => `fields[]=${f}`).join("&");
+
+  const fullRes = await fetch(
+    `${DIRECTUS_URL}/items/community_posts/${postId}?${fullFields}`,
+    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+  );
+  const fullJson = fullRes.ok ? await fullRes.json() : json;
+  return NextResponse.json({ data: fullJson.data ?? json.data }, { status: 201 });
 }
