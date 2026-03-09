@@ -5,7 +5,6 @@ import { ADMIN_TABS } from "../adminTabs";
 import UserTable from "./UserTable";
 
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL!;
-const ADMIN_TOKEN  = process.env.DIRECTUS_API_TOKEN!;
 
 export default async function AdminUsersPage({
   searchParams,
@@ -26,18 +25,12 @@ export default async function AdminUsersPage({
   if (!meRes.ok) redirect("/portal/login");
   const { data: user } = await meRes.json();
 
-  // Fetch roles and classes server-side to pass as initial props
-  const [rolesRes, classesRes] = await Promise.all([
-    fetch(`${DIRECTUS_URL}/roles?fields[]=id,name`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store",
-    }),
-    fetch(`${DIRECTUS_URL}/items/classes?fields[]=id,name,discipline&sort[]=name&limit=-1`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store",
-    }),
-  ]);
+  // Fetch roles server-side to pass as initial props (use admin's own token)
+  const rolesRes = await fetch(`${DIRECTUS_URL}/roles?fields[]=id,name`, {
+    headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
+  });
 
   const roles: { id: string; name: string }[] = rolesRes.ok ? ((await rolesRes.json()).data ?? []) : [];
-  const classes = classesRes.ok ? ((await classesRes.json()).data ?? []) : [];
 
   // Build roleMap: name → id (lowercase keys, exclude system roles)
   const systemRoles = new Set(["public", "system"]);
@@ -76,7 +69,6 @@ export default async function AdminUsersPage({
         <UserTable
           initialTab={initialTab}
           roleMap={roleMap}
-          classes={classes}
         />
       </div>
     </main>

@@ -10,22 +10,15 @@ type UserRow = {
   status: string;
   role: { id: string; name: string } | null;
   avatar?: string | null;
-  class_id?: number | null;
   last_access?: string | null;
   date_created?: string;
 };
 
-type ClassOption = { id: number; name: string; discipline: string };
-
 type Props = {
   initialTab: string;
   roleMap: Record<string, string>; // roleName → roleId (from server, used as fallback)
-  classes: ClassOption[];
 };
 
-const DISCIPLINE_COLORS: Record<string, string> = {
-  media: "#ff6b6b", tech: "#7b61ff", business: "#61d4ff", arts: "#ffd761",
-};
 
 function timeAgo(iso?: string | null) {
   if (!iso) return "Never";
@@ -57,11 +50,10 @@ function Avatar({ avatarId, name, size = 36 }: { avatarId?: string | null; name:
   );
 }
 
-export default function UserTable({ initialTab, roleMap: initialRoleMap, classes: initialClasses }: Props) {
+export default function UserTable({ initialTab, roleMap: initialRoleMap }: Props) {
   const [tab, setTab]             = useState(initialTab);
   const [users, setUsers]         = useState<UserRow[]>([]);
   const [roleMap, setRoleMap]     = useState<Record<string, string>>(initialRoleMap);
-  const [classes, setClasses]     = useState<ClassOption[]>(initialClasses);
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState<string | null>(null);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
@@ -81,7 +73,6 @@ export default function UserTable({ initialTab, roleMap: initialRoleMap, classes
         const json = await res.json();
         setUsers(json.data ?? []);
         if (json.roleMap) setRoleMap(json.roleMap);
-        if (json.classes) setClasses(json.classes);
       }
     } catch (e) {
       setError("Network error — could not load users.");
@@ -204,7 +195,6 @@ export default function UserTable({ initialTab, roleMap: initialRoleMap, classes
             const isSaving   = saving === user.id;
             const roleName   = user.role?.name?.toLowerCase() ?? "unknown";
             const badgeColor = roleBadgeColor[roleName] ?? "#7070a0";
-            const currentClass = classes.find(c => c.id === user.class_id);
             const fullName = `${user.first_name} ${user.last_name ?? ""}`.trim();
 
             return (
@@ -238,11 +228,6 @@ export default function UserTable({ initialTab, roleMap: initialRoleMap, classes
                     </div>
                     <p style={{ fontSize: "12px", color: "#606080", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {user.email}
-                      {currentClass && (
-                        <span style={{ marginLeft: "10px", color: DISCIPLINE_COLORS[currentClass.discipline] ?? "#7b61ff" }}>
-                          • {currentClass.name}
-                        </span>
-                      )}
                     </p>
                   </div>
                   <p style={{ fontSize: "11px", color: "#505068", flexShrink: 0 }}>{timeAgo(user.last_access)}</p>
@@ -290,32 +275,6 @@ export default function UserTable({ initialTab, roleMap: initialRoleMap, classes
                         )}
                       </select>
                     </div>
-
-                    {/* Class assignment — shown for students and applicants */}
-                    {(roleName === "student" || roleName === "applicant") && (
-                      <div>
-                        <label style={{ fontSize: "11px", color: "#606080", fontWeight: 600, display: "block", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                          Assigned Class
-                        </label>
-                        <select
-                          value={user.class_id ?? ""}
-                          disabled={isSaving}
-                          onChange={e => updateUser(user.id, {
-                            class_id: e.target.value ? parseInt(e.target.value) : null,
-                          })}
-                          style={{
-                            padding: "7px 12px", borderRadius: "8px", fontSize: "13px",
-                            backgroundColor: "rgba(123,97,255,0.08)", border: "1px solid rgba(123,97,255,0.22)",
-                            color: "#e0d8ff", cursor: "pointer", minWidth: "200px",
-                          }}
-                        >
-                          <option value="" style={{ backgroundColor: "#1a1a2e" }}>— No class —</option>
-                          {classes.map(c => (
-                            <option key={c.id} value={c.id} style={{ backgroundColor: "#1a1a2e" }}>{c.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
 
                     {/* Quick approve for applicants */}
                     {roleName === "applicant" && (

@@ -35,7 +35,6 @@ export async function GET(req: NextRequest) {
     "id", "first_name", "last_name", "email",
     "status", "role.id", "role.name",
     "avatar", "title", "last_access", "date_created",
-    "class_id",
   ].map(f => `fields[]=${f}`).join("&");
 
   // Use proper array notation for _in filters (Directus v10 requirement)
@@ -62,14 +61,7 @@ export async function GET(req: NextRequest) {
   }
   const json = await res.json();
 
-  // Fetch classes for the class assignment dropdowns
-  const classesRes = await fetch(
-    `${DIRECTUS_URL}/items/classes?fields[]=id,name,discipline&limit=-1`,
-    { headers: authHeaders(token), cache: "no-store" }
-  );
-  const classes = classesRes.ok ? (await classesRes.json()).data ?? [] : [];
-
-  return NextResponse.json({ data: json.data ?? [], classes, roleMap });
+  return NextResponse.json({ data: json.data ?? [], roleMap });
 }
 
 /** PATCH /api/portal/admin/users — update a user's role, class_id, or status */
