@@ -38,11 +38,15 @@ export async function POST(req: NextRequest) {
     const user = meJson.data;
     const roleName: string = (user?.role?.name || "").toLowerCase();
 
+    // Normalize admin variants ("administrator" → "admin")
+    const normalizedRole = (roleName === "administrator") ? "admin" : roleName;
+
     // Determine redirect path
     let redirectTo = "/portal/login";
-    if (roleName === "teacher") redirectTo = "/portal/teacher";
-    else if (roleName === "student") redirectTo = "/portal/student";
-    else if (roleName === "applicant") redirectTo = "/portal/applicant";
+    if (normalizedRole === "teacher") redirectTo = "/portal/teacher";
+    else if (normalizedRole === "student") redirectTo = "/portal/student";
+    else if (normalizedRole === "applicant") redirectTo = "/portal/applicant";
+    else if (normalizedRole === "admin") redirectTo = "/portal/admin";
 
     const response = NextResponse.json({
       success: true,
@@ -51,7 +55,7 @@ export async function POST(req: NextRequest) {
         id: user?.id,
         first_name: user?.first_name,
         last_name: user?.last_name,
-        role: roleName,
+        role: normalizedRole,
       },
     });
 
@@ -66,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     // Store role so portal pages don't need to re-fetch it from Directus
     // (students lack permission to expand the role relation via their own token)
-    response.cookies.set("portal_role", roleName, {
+    response.cookies.set("portal_role", normalizedRole, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

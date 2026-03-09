@@ -19,6 +19,7 @@ export default async function PortalPage() {
   if (role === "teacher") redirect("/portal/teacher");
   if (role === "student") redirect("/portal/student");
   if (role === "applicant") redirect("/portal/applicant");
+  if (role === "admin") redirect("/portal/admin");
 
   // Unknown or missing role — go back to login
   redirect("/portal/login");

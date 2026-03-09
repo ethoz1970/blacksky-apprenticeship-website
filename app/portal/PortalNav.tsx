@@ -68,9 +68,9 @@ export default function PortalNav({ tabs, userId, firstName, avatarId, role, unr
 
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
           <span style={{ fontSize: "13px", color: "#606080" }}>
-            {role === "teacher" ? "Teacher" : "Student"}
+            {role === "teacher" ? "Teacher" : role === "admin" ? "Admin" : "Student"}
           </span>
-          <a href={role === "teacher" ? "/portal/teacher" : "/portal/student"} style={{ textDecoration: "none" }}>
+          <a href={role === "teacher" ? "/portal/teacher" : role === "admin" ? "/portal/admin" : "/portal/student"} style={{ textDecoration: "none" }}>
             <Avatar avatarId={avatarId} firstName={firstName} size={32} />
           </a>
           <button
