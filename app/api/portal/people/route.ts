@@ -20,9 +20,10 @@ export async function GET(req: NextRequest) {
     ? { Authorization: `Bearer ${ADMIN_TOKEN}` }
     : { Authorization: `Bearer ${token}` };
 
+  // Note: Directus role names are capitalized (Student, Teacher)
   const usersRes = await fetch(
     `${DIRECTUS_URL}/users?fields[]=id,first_name,last_name,avatar,class_id,role.name` +
-    `&filter[role][name][_in]=student,teacher&sort[]=first_name&limit=200`,
+    `&filter[role][name][_in]=Student,Teacher&sort[]=first_name&limit=200`,
     { headers: authHeader, cache: "no-store" }
   );
   if (!usersRes.ok) {
@@ -49,7 +50,8 @@ export async function GET(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const users = (rawUsers ?? []).map((u: any) => {
-    const roleName = u.role?.name ?? "student";
+    // Normalize role name to lowercase to match portal_role cookie values
+    const roleName = (u.role?.name ?? "student").toLowerCase();
     let className: string | null = null;
     if (roleName === "teacher") {
       className = teacherClassMap[u.id] ?? null;
