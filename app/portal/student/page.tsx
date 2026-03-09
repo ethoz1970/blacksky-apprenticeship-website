@@ -113,10 +113,11 @@ export default async function StudentPortalPage() {
   }
 
   const tabs = [
-    { label: "Dashboard", href: "/portal/student" },
-    { label: "Community", href: "/portal/community" },
-    { label: "People", href: "/portal/people" },
-    { label: "Messages", href: "/portal/messages" },
+    { label: "Dashboard",     href: "/portal/student" },
+    { label: "Community",     href: "/portal/community" },
+    { label: "People",        href: "/portal/people" },
+    { label: "Messages",      href: "/portal/messages" },
+    { label: "Notifications", href: "/portal/notifications" },
   ];
 
   return (

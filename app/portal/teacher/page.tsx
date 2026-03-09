@@ -50,10 +50,11 @@ export default async function TeacherPortalPage() {
   }
 
   const tabs = [
-    { label: "Dashboard", href: "/portal/teacher" },
-    { label: "Community", href: "/portal/community" },
-    { label: "People", href: "/portal/people" },
-    { label: "Messages", href: "/portal/messages" },
+    { label: "Dashboard",     href: "/portal/teacher" },
+    { label: "Community",     href: "/portal/community" },
+    { label: "People",        href: "/portal/people" },
+    { label: "Messages",      href: "/portal/messages" },
+    { label: "Notifications", href: "/portal/notifications" },
   ];
 
   return (

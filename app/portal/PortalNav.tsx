@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type Tab = { label: string; href: string; };
 
@@ -11,10 +11,8 @@ type Props = {
   firstName: string;
   avatarId?: string | null;
   role: string;
-  unreadMessages?: number;
+  unreadMessages?: number; // kept for backward compat, badge now self-fetches
 };
-
-const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL || "https://directus-production-21fe.up.railway.app";
 
 function Avatar({ avatarId, firstName, size = 32 }: { avatarId?: string | null; firstName: string; size?: number }) {
   if (avatarId) {
@@ -39,10 +37,29 @@ function Avatar({ avatarId, firstName, size = 32 }: { avatarId?: string | null; 
   );
 }
 
-export default function PortalNav({ tabs, userId, firstName, avatarId, role, unreadMessages = 0 }: Props) {
+export default function PortalNav({ tabs, userId, firstName, avatarId, role }: Props) {
   const pathname = usePathname();
   const router   = useRouter();
-  const [loggingOut, setLoggingOut] = useState(false);
+  const [loggingOut, setLoggingOut]   = useState(false);
+  const [notifCount, setNotifCount]   = useState(0);
+  const [unreadMsgs, setUnreadMsgs]   = useState(0);
+
+  // Self-fetch notification counts every 30 seconds
+  useEffect(() => {
+    async function fetchCounts() {
+      try {
+        const res = await fetch("/api/portal/notifications/count");
+        if (res.ok) {
+          const data = await res.json();
+          setNotifCount(data.total ?? 0);
+          setUnreadMsgs(data.unread_messages ?? 0);
+        }
+      } catch { /* silent */ }
+    }
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 30_000);
+    return () => clearInterval(interval);
+  }, [userId]);
 
   async function logout() {
     setLoggingOut(true);
@@ -93,8 +110,11 @@ export default function PortalNav({ tabs, userId, firstName, avatarId, role, unr
         borderTop: "1px solid rgba(123,97,255,0.08)",
       }}>
         {tabs.map((tab) => {
-          const active = pathname === tab.href || (tab.href !== "/" && pathname.startsWith(tab.href));
-          const isMsgs = tab.label === "Messages";
+          const active    = pathname === tab.href || (tab.href !== "/" && pathname.startsWith(tab.href));
+          const isMsgs    = tab.label === "Messages";
+          const isNotifs  = tab.label === "Notifications";
+          const badge     = isMsgs ? unreadMsgs : isNotifs ? notifCount : 0;
+
           return (
             <a
               key={tab.href}
@@ -111,14 +131,14 @@ export default function PortalNav({ tabs, userId, firstName, avatarId, role, unr
               }}
             >
               {tab.label}
-              {isMsgs && unreadMessages > 0 && (
+              {badge > 0 && (
                 <span style={{
-                  backgroundColor: "#7b61ff",
+                  backgroundColor: isNotifs ? "#ff6b6b" : "#7b61ff",
                   color: "white", fontSize: "10px", fontWeight: 700,
                   borderRadius: "100px", padding: "1px 6px",
                   lineHeight: "16px",
                 }}>
-                  {unreadMessages}
+                  {badge}
                 </span>
               )}
             </a>
