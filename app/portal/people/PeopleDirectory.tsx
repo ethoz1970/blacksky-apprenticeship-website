@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 
 type User = {
   id: string;
@@ -11,11 +11,11 @@ type User = {
   class_name: string | null;
 };
 
-type Connection = {
+type RawConnection = {
   id: number;
   status: string;
-  requester: { id: string };
-  recipient: { id: string };
+  requester: { id: string; first_name: string; last_name: string; avatar: string | null };
+  recipient: { id: string; first_name: string; last_name: string; avatar: string | null };
 };
 
 type ConnectionMap = Record<string, {
@@ -24,36 +24,59 @@ type ConnectionMap = Record<string, {
 }>;
 
 export default function PeopleDirectory({ myId }: { myId: string }) {
-  const [users, setUsers] = useState<User[]>([]);
-  const [connections, setConnections] = useState<ConnectionMap>({});
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"all" | "student" | "teacher">("all");
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers]               = useState<User[]>([]);
+  const [connections, setConnections]   = useState<ConnectionMap>({});
+  const [pendingIn, setPendingIn]       = useState<RawConnection[]>([]);
+  const [search, setSearch]             = useState("");
+  const [roleFilter, setRoleFilter]     = useState<"all" | "student" | "teacher">("all");
+  const [loading, setLoading]           = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  const buildConnectionMap = useCallback((connData: {
+    accepted?: RawConnection[];
+    pending_sent?: RawConnection[];
+    pending_received?: RawConnection[];
+  }) => {
+    const map: ConnectionMap = {};
+    for (const c of connData.accepted ?? []) {
+      const otherId = c.requester.id === myId ? c.recipient.id : c.requester.id;
+      map[otherId] = { connectionId: c.id, status: "accepted" };
+    }
+    for (const c of connData.pending_sent ?? []) {
+      map[c.recipient.id] = { connectionId: c.id, status: "pending_sent" };
+    }
+    for (const c of connData.pending_received ?? []) {
+      map[c.requester.id] = { connectionId: c.id, status: "pending_received" };
+    }
+    return map;
+  }, [myId]);
+
+  const refreshConnections = useCallback(async () => {
+    const res = await fetch("/api/portal/connections");
+    if (!res.ok) return;
+    const connData = await res.json();
+    setConnections(buildConnectionMap(connData));
+    setPendingIn(connData.pending_received ?? []);
+  }, [buildConnectionMap]);
+
+  // Initial load
   useEffect(() => {
     Promise.all([
       fetch("/api/portal/people").then(r => r.json()),
       fetch("/api/portal/connections").then(r => r.json()),
     ]).then(([peopleData, connData]) => {
       setUsers(peopleData.users ?? []);
-
-      // Build connection map: userId -> { connectionId, status }
-      const map: ConnectionMap = {};
-      for (const c of connData.accepted ?? []) {
-        const otherId = c.requester.id === myId ? c.recipient.id : c.requester.id;
-        map[otherId] = { connectionId: c.id, status: "accepted" };
-      }
-      for (const c of connData.pending_sent ?? []) {
-        map[c.recipient.id] = { connectionId: c.id, status: "pending_sent" };
-      }
-      for (const c of connData.pending_received ?? []) {
-        map[c.requester.id] = { connectionId: c.id, status: "pending_received" };
-      }
-      setConnections(map);
+      setConnections(buildConnectionMap(connData));
+      setPendingIn(connData.pending_received ?? []);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [myId]);
+  }, [buildConnectionMap]);
+
+  // Poll for new requests every 8 seconds
+  useEffect(() => {
+    const interval = setInterval(refreshConnections, 8000);
+    return () => clearInterval(interval);
+  }, [refreshConnections]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -87,27 +110,43 @@ export default function PeopleDirectory({ myId }: { myId: string }) {
     }
   }
 
+  async function cancelRequest(userId: string, connectionId: number) {
+    setActionLoading(userId);
+    try {
+      const res = await fetch(`/api/portal/connections/${connectionId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setConnections(prev => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   async function respondConnection(userId: string, connectionId: number, action: "accept" | "decline") {
     setActionLoading(userId);
     try {
       const res = await fetch(`/api/portal/connections/${connectionId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: action === "accept" ? "accepted" : "declined" }),
+        body: JSON.stringify({ action }), // API reads { action }, not { status }
       });
       if (res.ok) {
-        setConnections(prev => ({
-          ...prev,
-          [userId]: action === "accept"
-            ? { connectionId, status: "accepted" }
-            : { connectionId, status: "pending_received" }, // remove on decline
-        }));
-        if (action === "decline") {
+        if (action === "accept") {
+          setConnections(prev => ({ ...prev, [userId]: { connectionId, status: "accepted" } }));
+          setPendingIn(prev => prev.filter(c => c.id !== connectionId));
+        } else {
           setConnections(prev => {
             const next = { ...prev };
             delete next[userId];
             return next;
           });
+          setPendingIn(prev => prev.filter(c => c.id !== connectionId));
         }
       }
     } finally {
@@ -137,8 +176,125 @@ export default function PeopleDirectory({ myId }: { myId: string }) {
 
   return (
     <div>
+      {/* ── Pending Requests Section ── */}
+      {pendingIn.length > 0 && (
+        <div style={{ marginBottom: "32px" }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: "10px",
+            marginBottom: "14px",
+          }}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#f0eeff", margin: 0 }}>
+              Connection Requests
+            </h2>
+            <span style={{
+              fontSize: "11px", fontWeight: 700,
+              backgroundColor: "rgba(123,97,255,0.2)",
+              border: "1px solid rgba(123,97,255,0.4)",
+              color: "#a590ff",
+              borderRadius: "100px",
+              padding: "2px 8px",
+            }}>
+              {pendingIn.length}
+            </span>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {pendingIn.map(conn => {
+              const sender = conn.requester;
+              const fullName = `${sender.first_name} ${sender.last_name ?? ""}`.trim();
+              const initials = [sender.first_name?.[0], sender.last_name?.[0]]
+                .filter(Boolean).join("").toUpperCase() || "?";
+              const isLoading = actionLoading === sender.id;
+
+              return (
+                <div key={conn.id} style={{
+                  display: "flex", alignItems: "center", gap: "14px",
+                  backgroundColor: "rgba(123,97,255,0.06)",
+                  border: "1px solid rgba(123,97,255,0.2)",
+                  borderRadius: "10px",
+                  padding: "14px 18px",
+                }}>
+                  {/* Avatar */}
+                  {sender.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/portal/files/${sender.avatar}`}
+                      alt={fullName}
+                      style={{
+                        width: 44, height: 44, borderRadius: "50%",
+                        objectFit: "cover", flexShrink: 0,
+                        border: "2px solid rgba(123,97,255,0.3)",
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: 44, height: 44, borderRadius: "50%",
+                      backgroundColor: "rgba(123,97,255,0.2)",
+                      border: "2px solid rgba(123,97,255,0.3)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "15px", fontWeight: 800, color: "#a590ff", flexShrink: 0,
+                    }}>
+                      {initials}
+                    </div>
+                  )}
+
+                  {/* Name + label */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "14px", fontWeight: 700, color: "#f0eeff" }}>{fullName}</div>
+                    <div style={{ fontSize: "12px", color: "#707090", marginTop: "2px" }}>
+                      wants to connect with you
+                    </div>
+                  </div>
+
+                  {/* Accept / Decline */}
+                  <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+                    {isLoading ? (
+                      <span style={{ fontSize: "12px", color: "#707090" }}>...</span>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => respondConnection(sender.id, conn.id, "accept")}
+                          style={{
+                            padding: "7px 16px", borderRadius: "7px",
+                            border: "1px solid rgba(97,255,176,0.35)",
+                            backgroundColor: "rgba(97,255,176,0.12)", color: "#61ffb0",
+                            fontSize: "13px", fontWeight: 700, cursor: "pointer",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => respondConnection(sender.id, conn.id, "decline")}
+                          style={{
+                            padding: "7px 14px", borderRadius: "7px",
+                            border: "1px solid rgba(255,107,107,0.25)",
+                            backgroundColor: "rgba(255,107,107,0.08)", color: "#ff6b6b",
+                            fontSize: "13px", fontWeight: 700, cursor: "pointer",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          Decline
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ borderBottom: "1px solid rgba(123,97,255,0.1)", marginTop: "28px" }} />
+        </div>
+      )}
+
+      {/* ── Directory ── */}
+      <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#f0eeff", margin: "0 0 16px" }}>
+        Directory
+      </h2>
+
       {/* Search bar */}
-      <div style={{ marginBottom: "20px" }}>
+      <div style={{ marginBottom: "14px" }}>
         <input
           type="text"
           placeholder="Search by name, role, or class..."
@@ -160,7 +316,7 @@ export default function PeopleDirectory({ myId }: { myId: string }) {
       </div>
 
       {/* Filter pills */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "24px" }}>
+      <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
         <button style={pillStyle(roleFilter === "all")} onClick={() => setRoleFilter("all")}>All</button>
         <button style={pillStyle(roleFilter === "student")} onClick={() => setRoleFilter("student")}>Students</button>
         <button style={pillStyle(roleFilter === "teacher")} onClick={() => setRoleFilter("teacher")}>Teachers</button>
@@ -192,6 +348,7 @@ export default function PeopleDirectory({ myId }: { myId: string }) {
               connection={connections[user.id]}
               isLoading={actionLoading === user.id}
               onConnect={() => sendConnect(user.id)}
+              onCancel={(connId) => cancelRequest(user.id, connId)}
               onAccept={(connId) => respondConnection(user.id, connId, "accept")}
               onDecline={(connId) => respondConnection(user.id, connId, "decline")}
             />
@@ -207,6 +364,7 @@ function UserCard({
   connection,
   isLoading,
   onConnect,
+  onCancel,
   onAccept,
   onDecline,
 }: {
@@ -214,6 +372,7 @@ function UserCard({
   connection?: ConnectionMap[string];
   isLoading: boolean;
   onConnect: () => void;
+  onCancel: (connId: number) => void;
   onAccept: (connId: number) => void;
   onDecline: (connId: number) => void;
 }) {
@@ -309,14 +468,32 @@ function UserCard({
             Connect
           </button>
         ) : connection.status === "pending_sent" ? (
-          <span style={{
-            ...btnBase,
-            backgroundColor: "rgba(123,97,255,0.08)",
-            color: "#606080",
-            cursor: "default",
-          }}>
+          <button
+            onClick={() => onCancel(connection.connectionId)}
+            title="Cancel request"
+            style={{
+              ...btnBase,
+              backgroundColor: "rgba(123,97,255,0.08)",
+              color: "#707090",
+              border: "1px solid rgba(123,97,255,0.15)",
+              cursor: "pointer",
+              position: "relative",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,107,107,0.1)";
+              (e.currentTarget as HTMLButtonElement).style.color = "#ff6b6b";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,107,107,0.25)";
+              (e.currentTarget as HTMLButtonElement).textContent = "Cancel";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(123,97,255,0.08)";
+              (e.currentTarget as HTMLButtonElement).style.color = "#707090";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(123,97,255,0.15)";
+              (e.currentTarget as HTMLButtonElement).textContent = "Pending";
+            }}
+          >
             Pending
-          </span>
+          </button>
         ) : connection.status === "pending_received" ? (
           <>
             <button
