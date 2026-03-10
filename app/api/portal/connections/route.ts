@@ -56,8 +56,8 @@ export async function GET(req: NextRequest) {
   const { data } = await res.json();
   const all = data ?? [];
 
-  // Directus may return relation fields as a raw UUID string OR an expanded object
-  // depending on the user's read permissions — handle both cases.
+  // Directus returns relation fields as a raw UUID string when M2O relations
+  // are not yet configured, OR as a null when expansion fails entirely.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function extractId(field: any): string | null {
     if (!field) return null;
@@ -66,10 +66,34 @@ export async function GET(req: NextRequest) {
     return null;
   }
 
+  // Only pass through connections where BOTH sides expanded to full objects.
+  // If the Directus M2O relation isn't configured yet, requester/recipient
+  // will be a raw UUID string or null — those records would crash the UI.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function isExpandedUser(v: any): boolean {
+    return v !== null && typeof v === "object" && typeof v.id === "string";
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const expanded = all.filter((c: any) => isExpandedUser(c.requester) && isExpandedUser(c.recipient));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const unexpanded = all.filter((c: any) => !isExpandedUser(c.requester) || !isExpandedUser(c.recipient));
+
+  // For unexpanded records we can still build a minimal safe shape for the
+  // connection map (status only — no names/avatars shown).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fallback = unexpanded.map((c: any) => ({
+    ...c,
+    requester: { id: extractId(c.requester) ?? "", first_name: "Member", last_name: "", avatar: null },
+    recipient: { id: extractId(c.recipient) ?? "", first_name: "Member", last_name: "", avatar: null },
+  }));
+
+  const safe = [...expanded, ...fallback];
+
   return NextResponse.json({
-    accepted:         all.filter((c: { status: string }) => c.status === "accepted"),
-    pending_sent:     all.filter((c: { status: string }) => c.status === "pending" && extractId((c as { requester: unknown }).requester) === me.id),
-    pending_received: all.filter((c: { status: string }) => c.status === "pending" && extractId((c as { recipient: unknown }).recipient) === me.id),
+    accepted:         safe.filter((c: { status: string }) => c.status === "accepted"),
+    pending_sent:     safe.filter((c: { status: string }) => c.status === "pending" && extractId((c as { requester: unknown }).requester) === me.id),
+    pending_received: safe.filter((c: { status: string }) => c.status === "pending" && extractId((c as { recipient: unknown }).recipient) === me.id),
     my_id:            me.id,
   });
 }

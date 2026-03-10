@@ -186,7 +186,9 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {requests.map(conn => {
               const sender = conn.requester;
-              const fullName = `${sender.first_name} ${sender.last_name ?? ""}`.trim();
+              // Guard: skip if requester didn't expand (Directus relations not yet configured)
+              if (!sender || typeof sender !== "object") return null;
+              const fullName = `${sender.first_name ?? "Member"} ${sender.last_name ?? ""}`.trim();
               const isActing = actionLoading === conn.id;
               const roleName = sender.role?.name?.toLowerCase() ?? "";
               const badgeColor = roleName === "teacher" ? "#ffd761" : "#a590ff";
@@ -272,7 +274,9 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {sentRequests.map(conn => {
               const other = conn.recipient;
-              const fullName = `${other.first_name} ${other.last_name ?? ""}`.trim();
+              // Guard: skip if recipient didn't expand
+              if (!other || typeof other !== "object") return null;
+              const fullName = `${other.first_name ?? "Member"} ${other.last_name ?? ""}`.trim();
               const isCancelling = cancelLoading === conn.id;
 
               return (
@@ -331,6 +335,7 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {conversations.map(conv => {
+              if (!conv.other?.first_name) return null;
               const fullName = `${conv.other.first_name} ${conv.other.last_name ?? ""}`.trim();
               return (
                 <a

@@ -39,13 +39,16 @@ export default function PeopleDirectory({ myId }: { myId: string }) {
   }) => {
     const map: ConnectionMap = {};
     for (const c of connData.accepted ?? []) {
+      if (!c.requester?.id || !c.recipient?.id) continue;
       const otherId = c.requester.id === myId ? c.recipient.id : c.requester.id;
-      map[otherId] = { connectionId: c.id, status: "accepted" };
+      if (otherId) map[otherId] = { connectionId: c.id, status: "accepted" };
     }
     for (const c of connData.pending_sent ?? []) {
+      if (!c.recipient?.id) continue;
       map[c.recipient.id] = { connectionId: c.id, status: "pending_sent" };
     }
     for (const c of connData.pending_received ?? []) {
+      if (!c.requester?.id) continue;
       map[c.requester.id] = { connectionId: c.id, status: "pending_received" };
     }
     return map;
@@ -201,7 +204,9 @@ export default function PeopleDirectory({ myId }: { myId: string }) {
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             {pendingIn.map(conn => {
               const sender = conn.requester;
-              const fullName = `${sender.first_name} ${sender.last_name ?? ""}`.trim();
+              // Guard: skip if requester didn't expand (Directus relations not yet configured)
+              if (!sender || typeof sender !== "object") return null;
+              const fullName = `${sender.first_name ?? "Member"} ${sender.last_name ?? ""}`.trim();
               const initials = [sender.first_name?.[0], sender.last_name?.[0]]
                 .filter(Boolean).join("").toUpperCase() || "?";
               const isLoading = actionLoading === sender.id;
