@@ -8,8 +8,8 @@ const resend         = new Resend(process.env.RESEND_API_KEY);
 
 const CONNECTION_FIELDS =
   "fields[]=id,date_created,status" +
-  "&fields[]=requester.id,requester.first_name,requester.last_name,requester.avatar" +
-  "&fields[]=recipient.id,recipient.first_name,recipient.last_name,recipient.avatar";
+  "&fields[]=requester.id,requester.first_name,requester.last_name,requester.avatar,requester.role.name" +
+  "&fields[]=recipient.id,recipient.first_name,recipient.last_name,recipient.avatar,recipient.role.name";
 
 /** Branded email wrapper matching the apply/confirm template style. */
 function emailHtml(body: string) {
@@ -44,11 +44,13 @@ export async function GET(req: NextRequest) {
   if (!meRes.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { data: me } = await meRes.json();
 
-  // Fetch all connections where I am requester or recipient
+  // Fetch all connections where I am requester or recipient.
+  // Admin token ensures the M2O relation fields (requester.first_name etc.)
+  // are always expanded — the user token may lack cross-collection read perms.
   const res = await fetch(
     `${DIRECTUS_URL}/items/user_connections?${CONNECTION_FIELDS}` +
     `&filter[_or][0][requester][_eq]=${me.id}&filter[_or][1][recipient][_eq]=${me.id}&limit=100`,
-    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+    { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
   );
   if (!res.ok) return NextResponse.json({ error: "Failed to fetch connections" }, { status: res.status });
   const { data } = await res.json();

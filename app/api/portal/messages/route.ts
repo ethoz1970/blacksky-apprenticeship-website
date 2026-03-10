@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL!;
+const ADMIN_TOKEN  = process.env.DIRECTUS_API_TOKEN!;
 
 // GET /api/portal/messages — list conversations (accepted connections + last message)
 export async function GET(req: NextRequest) {
@@ -13,38 +14,44 @@ export async function GET(req: NextRequest) {
   if (!meRes.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { data: me } = await meRes.json();
 
-  // Get accepted connections
+  // Get accepted connections — use admin token so relation expansion works
+  // regardless of whether the user has field-level read on directus_users.
   const connRes = await fetch(
     `${DIRECTUS_URL}/items/user_connections` +
     `?fields[]=id,requester.id,requester.first_name,requester.last_name,requester.avatar` +
     `&fields[]=recipient.id,recipient.first_name,recipient.last_name,recipient.avatar` +
     `&filter[status][_eq]=accepted` +
     `&filter[_or][0][requester][_eq]=${me.id}&filter[_or][1][recipient][_eq]=${me.id}&limit=100`,
-    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+    { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
   );
   if (!connRes.ok) return NextResponse.json({ conversations: [] });
   const { data: connections } = await connRes.json();
 
-  // For each connection, fetch the last message + unread count
+  // For each connection, fetch the last message + unread count.
+  // Admin token is used for message reads because the Directus permission
+  // originally restricted reads to sender === me, preventing recipients
+  // from seeing messages sent to them.
   const conversations = await Promise.all(
     (connections ?? []).map(async (conn: {
       id: number;
       requester: { id: string; first_name: string; last_name: string; avatar?: string | null };
       recipient: { id: string; first_name: string; last_name: string; avatar?: string | null };
     }) => {
-      const other = conn.requester?.id === me.id ? conn.recipient : conn.requester;
+      // Handle both expanded objects and raw UUID strings
+      const requesterId = typeof conn.requester === "object" ? conn.requester?.id : conn.requester;
+      const other = requesterId === me.id ? conn.recipient : conn.requester;
 
       const [lastMsgRes, unreadRes] = await Promise.all([
         fetch(
           `${DIRECTUS_URL}/items/direct_messages` +
           `?fields[]=id,content,date_created,sender.id,read_at` +
           `&filter[connection_id][_eq]=${conn.id}&sort[]=-date_created&limit=1`,
-          { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+          { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
         ),
         fetch(
           `${DIRECTUS_URL}/items/direct_messages` +
           `?aggregate[count]=id&filter[connection_id][_eq]=${conn.id}&filter[read_at][_null]=true&filter[sender][_neq]=${me.id}`,
-          { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+          { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
         ),
       ]);
 
