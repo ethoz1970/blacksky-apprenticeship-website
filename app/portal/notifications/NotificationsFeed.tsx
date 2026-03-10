@@ -2,16 +2,19 @@
 
 import { useEffect, useState, useCallback } from "react";
 
+type ConnUser = {
+  id: string;
+  first_name: string;
+  last_name?: string;
+  avatar?: string | null;
+  role?: { name: string } | null;
+};
+
 type RawConnection = {
   id: number;
   date_created: string;
-  requester: {
-    id: string;
-    first_name: string;
-    last_name?: string;
-    avatar?: string | null;
-    role?: { name: string } | null;
-  };
+  requester: ConnUser;
+  recipient: ConnUser;
 };
 
 type Conversation = {
@@ -63,33 +66,39 @@ function UserAvatar({ avatarId, name, size = 40 }: { avatarId?: string | null; n
 
 export default function NotificationsFeed({ myId }: { myId: string }) {
   const [requests, setRequests]         = useState<RawConnection[]>([]);
+  const [sentRequests, setSentRequests] = useState<RawConnection[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [cancelLoading, setCancelLoading] = useState<number | null>(null);
   const [loading, setLoading]           = useState(true);
 
   const load = useCallback(async () => {
-    try {
-      const [connRes, msgsRes] = await Promise.all([
-        fetch("/api/portal/connections"),
-        fetch("/api/portal/messages"),
-      ]);
-
-      if (connRes.ok) {
-        const connData = await connRes.json();
-        setRequests(connData.pending_received ?? []);
+    // Fetch connections and messages independently so one failure can't blank the page
+    const loadConnections = async () => {
+      try {
+        const res = await fetch("/api/portal/connections");
+        if (!res.ok) return;
+        const data = await res.json();
+        setRequests(data.pending_received ?? []);
+        setSentRequests(data.pending_sent ?? []);
+      } catch (e) {
+        console.error("[notifications] connections error:", e);
       }
+    };
 
-      if (msgsRes.ok) {
-        const msgsData = await msgsRes.json();
-        // Filter to only conversations with unread messages
-        const unread = (msgsData.conversations ?? []).filter(
-          (c: Conversation) => c.unread > 0
-        );
+    const loadMessages = async () => {
+      try {
+        const res = await fetch("/api/portal/messages");
+        if (!res.ok) return;
+        const data = await res.json();
+        const unread = (data.conversations ?? []).filter((c: Conversation) => c.unread > 0);
         setConversations(unread);
+      } catch (e) {
+        console.error("[notifications] messages error:", e);
       }
-    } catch (e) {
-      console.error("Notifications load error:", e);
-    }
+    };
+
+    await Promise.all([loadConnections(), loadMessages()]);
     setLoading(false);
   }, []);
 
@@ -101,7 +110,7 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
     return () => clearInterval(interval);
   }, [load]);
 
-  async function respond(connectionId: number, requesterId: string, action: "accept" | "decline") {
+  async function respond(connectionId: number, action: "accept" | "decline") {
     setActionLoading(connectionId);
     try {
       const res = await fetch(`/api/portal/connections/${connectionId}`, {
@@ -117,7 +126,19 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
     }
   }
 
-  const totalCount = requests.length + conversations.length;
+  async function cancelSent(connectionId: number) {
+    setCancelLoading(connectionId);
+    try {
+      const res = await fetch(`/api/portal/connections/${connectionId}`, { method: "DELETE" });
+      if (res.ok) {
+        setSentRequests(prev => prev.filter(r => r.id !== connectionId));
+      }
+    } finally {
+      setCancelLoading(null);
+    }
+  }
+
+  const totalCount = requests.length + sentRequests.length + conversations.length;
 
   if (loading) {
     return (
@@ -203,7 +224,7 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
                     ) : (
                       <>
                         <button
-                          onClick={() => respond(conn.id, sender.id, "accept")}
+                          onClick={() => respond(conn.id, "accept")}
                           style={{
                             padding: "8px 18px", borderRadius: "8px", border: "1px solid rgba(97,255,176,0.35)",
                             backgroundColor: "rgba(97,255,176,0.12)", color: "#61ffb0",
@@ -213,7 +234,7 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
                           Accept
                         </button>
                         <button
-                          onClick={() => respond(conn.id, sender.id, "decline")}
+                          onClick={() => respond(conn.id, "decline")}
                           style={{
                             padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(255,107,107,0.25)",
                             backgroundColor: "rgba(255,107,107,0.08)", color: "#ff6b6b",
@@ -225,6 +246,66 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
                       </>
                     )}
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ── Sent Requests (awaiting response) ── */}
+      {sentRequests.length > 0 && (
+        <section>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
+            <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#707090", margin: 0, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              Sent Requests
+            </h2>
+            <span style={{
+              fontSize: "11px", fontWeight: 700,
+              backgroundColor: "rgba(112,112,144,0.15)", border: "1px solid rgba(112,112,144,0.3)",
+              color: "#909090", borderRadius: "100px", padding: "2px 8px",
+            }}>
+              {sentRequests.length}
+            </span>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {sentRequests.map(conn => {
+              const other = conn.recipient;
+              const fullName = `${other.first_name} ${other.last_name ?? ""}`.trim();
+              const isCancelling = cancelLoading === conn.id;
+
+              return (
+                <div key={conn.id} style={{
+                  display: "flex", alignItems: "center", gap: "14px",
+                  backgroundColor: "rgba(26,26,46,0.5)",
+                  border: "1px solid rgba(123,97,255,0.1)",
+                  borderRadius: "12px", padding: "16px 20px",
+                }}>
+                  <UserAvatar avatarId={other.avatar} name={other.first_name} size={44} />
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: "15px", fontWeight: 700, color: "#c0b8e8" }}>{fullName}</span>
+                    <p style={{ fontSize: "13px", color: "#505068", margin: "3px 0 0" }}>
+                      Request pending · {conn.date_created ? timeAgo(conn.date_created) : ""}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => cancelSent(conn.id)}
+                    disabled={isCancelling}
+                    title="Cancel request"
+                    style={{
+                      padding: "7px 14px", borderRadius: "7px", cursor: "pointer",
+                      border: "1px solid rgba(255,107,107,0.2)",
+                      backgroundColor: "rgba(255,107,107,0.07)", color: "#ff6b6b",
+                      fontSize: "12px", fontWeight: 600, fontFamily: "inherit",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = "rgba(255,107,107,0.15)")}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = "rgba(255,107,107,0.07)")}
+                  >
+                    {isCancelling ? "…" : "Cancel"}
+                  </button>
                 </div>
               );
             })}

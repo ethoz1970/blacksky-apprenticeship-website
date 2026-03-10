@@ -54,10 +54,20 @@ export async function GET(req: NextRequest) {
   const { data } = await res.json();
   const all = data ?? [];
 
+  // Directus may return relation fields as a raw UUID string OR an expanded object
+  // depending on the user's read permissions — handle both cases.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function extractId(field: any): string | null {
+    if (!field) return null;
+    if (typeof field === "string") return field;
+    if (typeof field === "object" && field.id) return field.id;
+    return null;
+  }
+
   return NextResponse.json({
     accepted:         all.filter((c: { status: string }) => c.status === "accepted"),
-    pending_sent:     all.filter((c: { status: string; requester: { id: string } }) => c.status === "pending" && c.requester?.id === me.id),
-    pending_received: all.filter((c: { status: string; recipient: { id: string } }) => c.status === "pending" && c.recipient?.id === me.id),
+    pending_sent:     all.filter((c: { status: string }) => c.status === "pending" && extractId((c as { requester: unknown }).requester) === me.id),
+    pending_received: all.filter((c: { status: string }) => c.status === "pending" && extractId((c as { recipient: unknown }).recipient) === me.id),
     my_id:            me.id,
   });
 }
