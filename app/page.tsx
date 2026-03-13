@@ -49,8 +49,8 @@ export default async function HomePage() {
           .courses-grid  { grid-template-columns: 1fr !important; gap: 20px !important; }
           .cta-btn-lg    { padding: 16px 32px !important; font-size: 16px !important; width: 100%; box-sizing: border-box; text-align: center; }
           .footer-pad    { padding: 28px 20px !important; }
-          .nav-links     { gap: 16px !important; }
-          .nav-signin    { display: none !important; }
+          .nav-links     { gap: 10px !important; }
+          .nav-hide-mobile { display: none !important; }
         }
       `}</style>
 
@@ -68,14 +68,13 @@ export default async function HomePage() {
         </a>
 
         <div className="nav-links" style={{ display: "flex", gap: "24px", alignItems: "center" }}>
-          <a href="#courses" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Courses</a>
-          <a className="nav-signin" href="/donate" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Donate</a>
+          <a className="nav-hide-mobile" href="#courses" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>Courses</a>
 
           {isLoggedIn ? (
             /* Logged-in state */
             <>
               {firstName && (
-                <span className="nav-signin" style={{ fontSize: "13px", color: "#606080" }}>
+                <span className="nav-hide-mobile" style={{ fontSize: "13px", color: "#606080" }}>
                   Hey, {firstName}
                 </span>
               )}
@@ -88,15 +87,21 @@ export default async function HomePage() {
               </a>
             </>
           ) : (
-            /* Guest state */
+            /* Guest state — Sign In always visible, Apply is primary CTA */
             <>
-              <a className="nav-signin" href="/portal/login" style={{ color: "#a0a0c0", textDecoration: "none", fontSize: "14px" }}>
+              <a href="/portal/login" style={{
+                color: "#a590ff", textDecoration: "none", fontSize: "13px", fontWeight: 600,
+                padding: "8px 16px", borderRadius: "6px",
+                border: "1px solid rgba(123,97,255,0.35)",
+                backgroundColor: "rgba(123,97,255,0.08)",
+                whiteSpace: "nowrap",
+              }}>
                 Sign In
               </a>
               <a href="/apply" style={{
                 backgroundColor: "#7b61ff", color: "white", textDecoration: "none",
                 fontWeight: 700, fontSize: "13px", padding: "8px 18px",
-                borderRadius: "6px",
+                borderRadius: "6px", whiteSpace: "nowrap",
               }}>
                 Apply
               </a>
@@ -170,12 +175,12 @@ export default async function HomePage() {
             </a>
           </div>
 
-          {/* Subtle sign-in nudge for guests */}
+          {/* Subtle sign-in nudge for guests on mobile where nav is compact */}
           {!isLoggedIn && (
             <p style={{ marginTop: "28px", fontSize: "13px", color: "#505070" }}>
-              Already applied?{" "}
+              Already a member?{" "}
               <a href="/portal/login" style={{ color: "#7b61ff", textDecoration: "none", fontWeight: 600 }}>
-                Sign in to check your status →
+                Sign in →
               </a>
             </p>
           )}
@@ -394,6 +399,9 @@ export default async function HomePage() {
           <span style={{ fontSize: "13px", color: "#606080" }}>
             Free education. Real knowledge. No exceptions.
           </span>
+          <a href="/donate" style={{ fontSize: "13px", color: "#a0a0c0", textDecoration: "none" }}>
+            Donate
+          </a>
           {!isLoggedIn && (
             <a href="/portal/login" style={{ fontSize: "13px", color: "#a0a0c0", textDecoration: "none" }}>
               Sign In
