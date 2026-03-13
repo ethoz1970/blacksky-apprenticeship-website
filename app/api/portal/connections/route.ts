@@ -90,10 +90,11 @@ export async function GET(req: NextRequest) {
 
   const safe = [...expanded, ...fallback];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return NextResponse.json({
-    accepted:         safe.filter((c: { status: string }) => c.status === "accepted"),
-    pending_sent:     safe.filter((c: { status: string }) => c.status === "pending" && extractId((c as { requester: unknown }).requester) === me.id),
-    pending_received: safe.filter((c: { status: string }) => c.status === "pending" && extractId((c as { recipient: unknown }).recipient) === me.id),
+    accepted:         safe.filter((c: any) => c.status === "accepted"),
+    pending_sent:     safe.filter((c: any) => c.status === "pending" && extractId(c.requester) === me.id),
+    pending_received: safe.filter((c: any) => c.status === "pending" && extractId(c.recipient) === me.id),
     my_id:            me.id,
   });
 }
