@@ -4,9 +4,8 @@ import PortalNav from "../../PortalNav";
 import ConversationList from "../ConversationList";
 import ChatView from "./ChatView";
 
-const DIRECTUS_URL =
-  process.env.NEXT_PUBLIC_DIRECTUS_URL ||
-  "https://directus-production-21fe.up.railway.app";
+const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL || "https://directus-production-21fe.up.railway.app";
+const ADMIN_TOKEN  = process.env.DIRECTUS_API_TOKEN!;
 
 export default async function ChatPage({
   params,
@@ -30,29 +29,49 @@ export default async function ChatPage({
   if (!meRes.ok) redirect("/portal/login");
   const { data: user } = await meRes.json();
 
-  // Fetch the connection to verify membership and get other user
+  // Fetch the connection using admin token so relation fields always expand.
+  // We verify the user is actually a participant below before rendering anything.
   const connRes = await fetch(
     `${DIRECTUS_URL}/items/user_connections/${connectionId}` +
     `?fields[]=id,status,requester.id,requester.first_name,requester.last_name,requester.avatar` +
     `,recipient.id,recipient.first_name,recipient.last_name,recipient.avatar`,
-    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+    { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
   );
   if (!connRes.ok) redirect("/portal/messages");
   const { data: connection } = await connRes.json();
 
   if (connection.status !== "accepted") redirect("/portal/messages");
 
-  // Determine who the other user is
-  const isRequester = connection.requester.id === user.id;
+  // Handle both expanded objects and raw UUID strings (defensive, in case
+  // Directus relations haven't fully propagated yet)
+  const requesterId = typeof connection.requester === "object"
+    ? connection.requester?.id
+    : connection.requester;
+  const recipientId = typeof connection.recipient === "object"
+    ? connection.recipient?.id
+    : connection.recipient;
+
+  // Security check — ensure this user is actually part of the connection
+  if (requesterId !== user.id && recipientId !== user.id) {
+    redirect("/portal/messages");
+  }
+
+  const isRequester = requesterId === user.id;
   const otherUser = isRequester ? connection.recipient : connection.requester;
 
-  // Fetch initial messages directly from Directus
+  // Null guard — if relation expansion failed, build a placeholder
+  const safeOtherUser = (otherUser && typeof otherUser === "object")
+    ? otherUser
+    : { id: isRequester ? recipientId : requesterId, first_name: "Member", last_name: "", avatar: null };
+
+  // Fetch initial messages using admin token — user token's read permission
+  // previously only allowed reading messages the user sent (not received).
   const msgsRes = await fetch(
     `${DIRECTUS_URL}/items/direct_messages` +
     `?fields[]=id,content,date_created,read_at` +
     `&fields[]=sender.id,sender.first_name,sender.last_name,sender.avatar` +
     `&filter[connection_id][_eq]=${connectionId}&sort[]=date_created&limit=100`,
-    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+    { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
   );
   let initialMessages: unknown[] = [];
   if (msgsRes.ok) {
@@ -75,7 +94,7 @@ export default async function ChatPage({
         { label: "Messages", href: "/portal/messages" },
       ];
 
-  const otherName = `${otherUser.first_name} ${otherUser.last_name || ""}`.trim();
+  const otherName = `${safeOtherUser.first_name ?? "Member"} ${safeOtherUser.last_name ?? ""}`.trim();
 
   return (
     <main style={{ backgroundColor: "#0d0d1a", minHeight: "100vh", color: "#f0eeff", display: "flex", flexDirection: "column" }}>
@@ -116,10 +135,10 @@ export default async function ChatPage({
             borderBottom: "1px solid rgba(123,97,255,0.1)",
             display: "flex", alignItems: "center", gap: "12px",
           }}>
-            {otherUser.avatar ? (
+            {safeOtherUser.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={`/api/portal/files/${otherUser.avatar}?inline=1`}
+                src={`/api/portal/files/${safeOtherUser.avatar}?inline=1`}
                 alt={otherName}
                 style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
               />
@@ -130,7 +149,7 @@ export default async function ChatPage({
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 14, fontWeight: 700, color: "#a590ff", flexShrink: 0,
               }}>
-                {otherUser.first_name[0]?.toUpperCase()}
+                {safeOtherUser.first_name?.[0]?.toUpperCase() ?? "?"}
               </div>
             )}
             <div>
@@ -143,7 +162,7 @@ export default async function ChatPage({
             myId={user.id}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             initialMessages={initialMessages as any}
-            otherUser={otherUser}
+            otherUser={safeOtherUser}
           />
         </div>
       </div>
