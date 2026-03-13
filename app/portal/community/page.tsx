@@ -44,13 +44,11 @@ export default async function CommunityPage() {
         { label: "Dashboard", href: "/portal/teacher" },
         { label: "Community", href: "/portal/community" },
         { label: "People", href: "/portal/people" },
-        { label: "Messages", href: "/portal/messages" },
       ]
     : [
         { label: "Dashboard", href: "/portal/student" },
         { label: "Community", href: "/portal/community" },
         { label: "People", href: "/portal/people" },
-        { label: "Messages", href: "/portal/messages" },
       ];
 
   void basePath;
@@ -63,7 +61,6 @@ export default async function CommunityPage() {
         firstName={user.first_name}
         avatarId={user.avatar}
         role={role}
-        unreadMessages={unreadCount}
       />
 
       <div style={{ maxWidth: "720px", margin: "0 auto", padding: "40px 24px" }}>

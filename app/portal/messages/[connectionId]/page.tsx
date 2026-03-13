@@ -85,13 +85,11 @@ export default async function ChatPage({
         { label: "Dashboard", href: "/portal/teacher" },
         { label: "Community", href: "/portal/community" },
         { label: "People", href: "/portal/people" },
-        { label: "Messages", href: "/portal/messages" },
       ]
     : [
         { label: "Dashboard", href: "/portal/student" },
         { label: "Community", href: "/portal/community" },
         { label: "People", href: "/portal/people" },
-        { label: "Messages", href: "/portal/messages" },
       ];
 
   const otherName = `${safeOtherUser.first_name ?? "Member"} ${safeOtherUser.last_name ?? ""}`.trim();

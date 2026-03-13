@@ -28,13 +28,11 @@ export default async function MessagesPage() {
         { label: "Dashboard", href: "/portal/teacher" },
         { label: "Community", href: "/portal/community" },
         { label: "People", href: "/portal/people" },
-        { label: "Messages", href: "/portal/messages" },
       ]
     : [
         { label: "Dashboard", href: "/portal/student" },
         { label: "Community", href: "/portal/community" },
         { label: "People", href: "/portal/people" },
-        { label: "Messages", href: "/portal/messages" },
       ];
 
   return (

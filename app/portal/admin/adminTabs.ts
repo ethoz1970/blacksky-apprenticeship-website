@@ -4,6 +4,4 @@ export const ADMIN_TABS = [
   { label: "Classes",       href: "/portal/admin/classes" },
   { label: "Community",     href: "/portal/community" },
   { label: "People",        href: "/portal/people" },
-  { label: "Messages",      href: "/portal/messages" },
-  { label: "Notifications", href: "/portal/notifications" },
 ];

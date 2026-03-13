@@ -27,23 +27,17 @@ export default async function NotificationsPage() {
         { label: "Classes",        href: "/portal/admin/classes" },
         { label: "Community",      href: "/portal/community" },
         { label: "People",         href: "/portal/people" },
-        { label: "Messages",       href: "/portal/messages" },
-        { label: "Notifications",  href: "/portal/notifications" },
       ]
     : role === "teacher"
     ? [
         { label: "Dashboard",      href: "/portal/teacher" },
         { label: "Community",      href: "/portal/community" },
         { label: "People",         href: "/portal/people" },
-        { label: "Messages",       href: "/portal/messages" },
-        { label: "Notifications",  href: "/portal/notifications" },
       ]
     : [
         { label: "Dashboard",      href: "/portal/student" },
         { label: "Community",      href: "/portal/community" },
         { label: "People",         href: "/portal/people" },
-        { label: "Messages",       href: "/portal/messages" },
-        { label: "Notifications",  href: "/portal/notifications" },
       ];
 
   return (

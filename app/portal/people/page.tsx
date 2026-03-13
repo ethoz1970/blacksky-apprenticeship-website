@@ -42,15 +42,11 @@ export default async function PeoplePage() {
         { label: "Dashboard",     href: "/portal/teacher" },
         { label: "Community",     href: "/portal/community" },
         { label: "People",        href: "/portal/people" },
-        { label: "Messages",      href: "/portal/messages" },
-        { label: "Notifications", href: "/portal/notifications" },
       ]
     : [
         { label: "Dashboard",     href: "/portal/student" },
         { label: "Community",     href: "/portal/community" },
         { label: "People",        href: "/portal/people" },
-        { label: "Messages",      href: "/portal/messages" },
-        { label: "Notifications", href: "/portal/notifications" },
       ];
 
   return (
@@ -61,7 +57,6 @@ export default async function PeoplePage() {
         firstName={user.first_name}
         avatarId={user.avatar}
         role={role}
-        unreadMessages={unreadCount}
       />
 
       <div style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 24px" }}>
