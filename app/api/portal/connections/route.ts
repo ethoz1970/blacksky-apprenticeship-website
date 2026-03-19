@@ -6,10 +6,27 @@ const ADMIN_TOKEN    = process.env.DIRECTUS_API_TOKEN!;
 const SITE_URL       = process.env.NEXT_PUBLIC_SITE_URL || "https://blackskyup.com";
 const resend         = new Resend(process.env.RESEND_API_KEY);
 
-const CONNECTION_FIELDS =
-  "fields[]=id,date_created,status" +
-  "&fields[]=requester.id,requester.first_name,requester.last_name,requester.avatar,requester.role.name" +
-  "&fields[]=recipient.id,recipient.first_name,recipient.last_name,recipient.avatar,recipient.role.name";
+type UserObj = { id: string; first_name: string; last_name: string; avatar: string | null };
+
+/**
+ * Batch-fetch Directus users by a set of UUIDs.
+ */
+async function fetchUsers(ids: Set<string>): Promise<Map<string, UserObj>> {
+  const map = new Map<string, UserObj>();
+  if (ids.size === 0) return map;
+
+  const idList = [...ids];
+  const filter = idList.map((id, i) => `filter[id][_in][${i}]=${id}`).join("&");
+  const res = await fetch(
+    `${DIRECTUS_URL}/users?${filter}&fields[]=id,first_name,last_name,avatar&limit=${idList.length}`,
+    { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
+  );
+  if (res.ok) {
+    const { data: users } = await res.json();
+    for (const u of users ?? []) map.set(u.id, u);
+  }
+  return map;
+}
 
 /** Branded email wrapper matching the apply/confirm template style. */
 function emailHtml(body: string) {
@@ -44,11 +61,9 @@ export async function GET(req: NextRequest) {
   if (!meRes.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { data: me } = await meRes.json();
 
-  // Fetch all connections where I am requester or recipient.
-  // Admin token ensures the M2O relation fields (requester.first_name etc.)
-  // are always expanded — the user token may lack cross-collection read perms.
+  // Fetch connections with FLAT fields — requester/recipient are bare UUID strings
   const res = await fetch(
-    `${DIRECTUS_URL}/items/user_connections?${CONNECTION_FIELDS}` +
+    `${DIRECTUS_URL}/items/user_connections?fields[]=id,date_created,status,requester,recipient` +
     `&filter[_or][0][requester][_eq]=${me.id}&filter[_or][1][recipient][_eq]=${me.id}&limit=100`,
     { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
   );
@@ -56,45 +71,37 @@ export async function GET(req: NextRequest) {
   const { data } = await res.json();
   const all = data ?? [];
 
-  // Directus returns relation fields as a raw UUID string when M2O relations
-  // are not yet configured, OR as a null when expansion fails entirely.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function extractId(field: any): string | null {
-    if (!field) return null;
-    if (typeof field === "string") return field;
-    if (typeof field === "object" && field.id) return field.id;
-    return null;
+  // Collect all user IDs that need hydrating
+  const userIds = new Set<string>();
+  for (const c of all) {
+    const reqId = typeof c.requester === "string" ? c.requester : c.requester?.id;
+    const recId = typeof c.recipient === "string" ? c.recipient : c.recipient?.id;
+    if (reqId) userIds.add(reqId);
+    if (recId) userIds.add(recId);
   }
+  const userMap = await fetchUsers(userIds);
 
-  // Only pass through connections where BOTH sides expanded to full objects.
-  // If the Directus M2O relation isn't configured yet, requester/recipient
-  // will be a raw UUID string or null — those records would crash the UI.
+  // Hydrate connections with full user objects
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function isExpandedUser(v: any): boolean {
-    return v !== null && typeof v === "object" && typeof v.id === "string";
-  }
+  const hydrated = all.map((c: any) => {
+    const reqId = typeof c.requester === "string" ? c.requester : c.requester?.id ?? "";
+    const recId = typeof c.recipient === "string" ? c.recipient : c.recipient?.id ?? "";
+    return {
+      id: c.id,
+      date_created: c.date_created,
+      status: c.status,
+      requester: userMap.get(reqId) ?? { id: reqId, first_name: "Member", last_name: "", avatar: null },
+      recipient: userMap.get(recId) ?? { id: recId, first_name: "Member", last_name: "", avatar: null },
+    };
+  });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const expanded = all.filter((c: any) => isExpandedUser(c.requester) && isExpandedUser(c.recipient));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const unexpanded = all.filter((c: any) => !isExpandedUser(c.requester) || !isExpandedUser(c.recipient));
-
-  // For unexpanded records we can still build a minimal safe shape for the
-  // connection map (status only — no names/avatars shown).
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fallback = unexpanded.map((c: any) => ({
-    ...c,
-    requester: { id: extractId(c.requester) ?? "", first_name: "Member", last_name: "", avatar: null },
-    recipient: { id: extractId(c.recipient) ?? "", first_name: "Member", last_name: "", avatar: null },
-  }));
-
-  const safe = [...expanded, ...fallback];
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return NextResponse.json({
-    accepted:         safe.filter((c: any) => c.status === "accepted"),
-    pending_sent:     safe.filter((c: any) => c.status === "pending" && extractId(c.requester) === me.id),
-    pending_received: safe.filter((c: any) => c.status === "pending" && extractId(c.recipient) === me.id),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    accepted:         hydrated.filter((c: any) => c.status === "accepted"),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pending_sent:     hydrated.filter((c: any) => c.status === "pending" && c.requester.id === me.id),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    pending_received: hydrated.filter((c: any) => c.status === "pending" && c.recipient.id === me.id),
     my_id:            me.id,
   });
 }
@@ -119,16 +126,17 @@ export async function POST(req: NextRequest) {
     `&filter[_or][0][_and][0][requester][_eq]=${me.id}&filter[_or][0][_and][1][recipient][_eq]=${recipient_id}` +
     `&filter[_or][1][_and][0][requester][_eq]=${recipient_id}&filter[_or][1][_and][1][recipient][_eq]=${me.id}` +
     `&limit=1`,
-    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+    { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
   );
   const existingJson = await existing.json();
   if (existingJson.data?.length > 0) {
     return NextResponse.json({ error: "Connection already exists", existing: existingJson.data[0] }, { status: 409 });
   }
 
+  // Use admin token to create so the record is always writable
   const res = await fetch(`${DIRECTUS_URL}/items/user_connections`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${ADMIN_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify({ requester: me.id, recipient: recipient_id, status: "pending" }),
   });
   if (!res.ok) return NextResponse.json({ error: "Failed to send request" }, { status: res.status });

@@ -13,31 +13,45 @@ export async function GET(req: NextRequest) {
   if (!meRes.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { data: me } = await meRes.json();
 
-  // Run both counts in parallel.
-  // Admin token is used so that the old "sender === me only" permission
-  // doesn't zero out the unread count for message recipients.
-  const [connRes, msgsRes] = await Promise.all([
+  // Run connection requests count + get accepted connection IDs in parallel
+  const [connReqRes, myConnsRes] = await Promise.all([
     // Pending connection requests where I am the recipient
     fetch(
       `${DIRECTUS_URL}/items/user_connections` +
       `?filter[recipient][_eq]=${me.id}&filter[status][_eq]=pending&aggregate[count]=id`,
       { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
     ),
-    // Unread direct messages not sent by me
+    // My accepted connections (to scope unread messages)
     fetch(
-      `${DIRECTUS_URL}/items/direct_messages` +
-      `?filter[sender][_neq]=${me.id}&filter[read_at][_null]=true&aggregate[count]=id`,
+      `${DIRECTUS_URL}/items/user_connections` +
+      `?fields[]=id&filter[status][_eq]=accepted` +
+      `&filter[_or][0][requester][_eq]=${me.id}&filter[_or][1][recipient][_eq]=${me.id}&limit=100`,
       { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
     ),
   ]);
 
-  const pending_requests = connRes.ok
-    ? Number((await connRes.json()).data?.[0]?.count?.id ?? 0)
+  const pending_requests = connReqRes.ok
+    ? Number((await connReqRes.json()).data?.[0]?.count?.id ?? 0)
     : 0;
 
-  const unread_messages = msgsRes.ok
-    ? Number((await msgsRes.json()).data?.[0]?.count?.id ?? 0)
-    : 0;
+  let unread_messages = 0;
+  if (myConnsRes.ok) {
+    const { data: myConns } = await myConnsRes.json();
+    const connIds: number[] = (myConns ?? []).map((c: { id: number }) => c.id);
+
+    if (connIds.length > 0) {
+      // Count unread messages in MY connections, not sent by me
+      const connFilter = connIds.map((id, i) => `filter[connection_id][_in][${i}]=${id}`).join("&");
+      const msgsRes = await fetch(
+        `${DIRECTUS_URL}/items/direct_messages` +
+        `?${connFilter}&filter[sender][_neq]=${me.id}&filter[read_at][_null]=true&aggregate[count]=id`,
+        { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` }, cache: "no-store" }
+      );
+      if (msgsRes.ok) {
+        unread_messages = Number((await msgsRes.json()).data?.[0]?.count?.id ?? 0);
+      }
+    }
+  }
 
   return NextResponse.json({
     pending_requests,

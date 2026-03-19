@@ -18,15 +18,15 @@ type RawConnection = {
 };
 
 type Conversation = {
-  connectionId: number;
-  other: {
+  connection_id: number;
+  other_user: {
     id: string;
     first_name: string;
     last_name?: string;
     avatar?: string | null;
   };
-  lastMessage: { content: string; date_created: string } | null;
-  unread: number;
+  last_message: { content: string; date_created: string } | null;
+  unread_count: number;
 };
 
 function timeAgo(iso: string) {
@@ -90,8 +90,8 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
       try {
         const res = await fetch("/api/portal/messages");
         if (!res.ok) return;
-        const data = await res.json();
-        const unread = (data.conversations ?? []).filter((c: Conversation) => c.unread > 0);
+        const json = await res.json();
+        const unread = (json.data ?? []).filter((c: Conversation) => c.unread_count > 0);
         setConversations(unread);
       } catch (e) {
         console.error("[notifications] messages error:", e);
@@ -139,6 +139,7 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
   }
 
   const totalCount = requests.length + sentRequests.length + conversations.length;
+  const totalUnreadMessages = conversations.reduce((sum, c) => sum + c.unread_count, 0);
 
   if (loading) {
     return (
@@ -329,18 +330,18 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
               backgroundColor: "rgba(123,97,255,0.2)", border: "1px solid rgba(123,97,255,0.4)",
               color: "#a590ff", borderRadius: "100px", padding: "2px 8px",
             }}>
-              {conversations.reduce((sum, c) => sum + c.unread, 0)}
+              {totalUnreadMessages}
             </span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {conversations.map(conv => {
-              if (!conv.other?.first_name) return null;
-              const fullName = `${conv.other.first_name} ${conv.other.last_name ?? ""}`.trim();
+              if (!conv.other_user?.first_name) return null;
+              const fullName = `${conv.other_user.first_name} ${conv.other_user.last_name ?? ""}`.trim();
               return (
                 <a
-                  key={conv.connectionId}
-                  href={`/portal/messages/${conv.connectionId}`}
+                  key={conv.connection_id}
+                  href={`/portal/messages/${conv.connection_id}`}
                   style={{ textDecoration: "none" }}
                 >
                   <div style={{
@@ -353,31 +354,31 @@ export default function NotificationsFeed({ myId }: { myId: string }) {
                     onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(123,97,255,0.35)")}
                     onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(123,97,255,0.12)")}
                   >
-                    <UserAvatar avatarId={conv.other.avatar} name={conv.other.first_name} size={44} />
+                    <UserAvatar avatarId={conv.other_user.avatar} name={conv.other_user.first_name} size={44} />
 
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
                         <span style={{ fontSize: "15px", fontWeight: 700, color: "#f0eeff" }}>{fullName}</span>
                         <span style={{ fontSize: "12px", color: "#505068", flexShrink: 0, marginLeft: "12px" }}>
-                          {conv.lastMessage ? timeAgo(conv.lastMessage.date_created) : ""}
+                          {conv.last_message ? timeAgo(conv.last_message.date_created) : ""}
                         </span>
                       </div>
                       <p style={{
                         fontSize: "13px", color: "#a0a0c0", margin: 0,
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}>
-                        {conv.lastMessage?.content ?? "No messages yet"}
+                        {conv.last_message?.content ?? "No messages yet"}
                       </p>
                     </div>
 
-                    {conv.unread > 0 && (
+                    {conv.unread_count > 0 && (
                       <span style={{
                         backgroundColor: "#7b61ff", color: "white",
                         fontSize: "11px", fontWeight: 700,
                         borderRadius: "100px", padding: "2px 8px",
                         flexShrink: 0, marginLeft: "8px",
                       }}>
-                        {conv.unread}
+                        {conv.unread_count}
                       </span>
                     )}
                   </div>
