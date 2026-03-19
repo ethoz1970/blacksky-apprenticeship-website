@@ -3,51 +3,95 @@ import { NextRequest, NextResponse } from "next/server";
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_DIRECTUS_URL!;
 const DIRECTUS_TOKEN = process.env.DIRECTUS_API_TOKEN!;
 
-/**
- * If Directus returns `author` as a bare UUID string (happens when the field
- * isn't a fully-configured M2O relation, or when permissions prevent expansion),
- * look up the user details with the admin token and merge them in.
- */
+/* ------------------------------------------------------------------ */
+/*  Helpers — hydrate bare-UUID fields into the objects the UI expects */
+/* ------------------------------------------------------------------ */
+
 type RawPost = Record<string, unknown>;
+type UserObj = { id: string; first_name: string; last_name: string; avatar: string | null };
+type FileObj = { id: string; filename_download: string; type?: string };
 
-async function hydrateAuthors(posts: RawPost[]): Promise<RawPost[]> {
-  // Collect any bare-UUID author values that need resolving
-  const bareIds = new Set<string>();
-  for (const p of posts) {
-    if (typeof p.author === "string" && p.author.length > 0) {
-      bareIds.add(p.author);
-    }
-  }
-  if (bareIds.size === 0) return posts; // all authors already expanded
+/**
+ * Batch-fetch Directus users by a set of UUIDs.
+ * Returns a map of userId → user object.
+ */
+async function fetchUsers(ids: Set<string>): Promise<Map<string, UserObj>> {
+  const map = new Map<string, UserObj>();
+  if (ids.size === 0) return map;
 
-  // Batch-fetch user details via admin token
-  const idList = [...bareIds];
-  const filterParts = idList.map((id, i) => `filter[id][_in][${i}]=${id}`).join("&");
-  const userRes = await fetch(
-    `${DIRECTUS_URL}/users?${filterParts}&fields[]=id,first_name,last_name,avatar&limit=${idList.length}`,
+  const idList = [...ids];
+  const filter = idList.map((id, i) => `filter[id][_in][${i}]=${id}`).join("&");
+  const res = await fetch(
+    `${DIRECTUS_URL}/users?${filter}&fields[]=id,first_name,last_name,avatar&limit=${idList.length}`,
     { headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` }, cache: "no-store" }
   );
+  if (res.ok) {
+    const { data: users } = await res.json();
+    for (const u of users ?? []) map.set(u.id, u);
+  }
+  return map;
+}
 
-  const userMap = new Map<string, { id: string; first_name: string; last_name: string; avatar: string | null }>();
-  if (userRes.ok) {
-    const { data: users } = await userRes.json();
-    for (const u of users ?? []) {
-      userMap.set(u.id, u);
-    }
+/**
+ * Batch-fetch Directus files by a set of UUIDs.
+ * Returns a map of fileId → file object.
+ */
+async function fetchFiles(ids: Set<string>): Promise<Map<string, FileObj>> {
+  const map = new Map<string, FileObj>();
+  if (ids.size === 0) return map;
+
+  const idList = [...ids];
+  const filter = idList.map((id, i) => `filter[id][_in][${i}]=${id}`).join("&");
+  const res = await fetch(
+    `${DIRECTUS_URL}/files?${filter}&fields[]=id,filename_download,type&limit=${idList.length}`,
+    { headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` }, cache: "no-store" }
+  );
+  if (res.ok) {
+    const { data: files } = await res.json();
+    for (const f of files ?? []) map.set(f.id, f);
+  }
+  return map;
+}
+
+/**
+ * Take the raw posts (where author/image/attachment are bare UUID strings)
+ * and replace them with the full objects the frontend expects.
+ */
+async function hydratePosts(posts: RawPost[]): Promise<RawPost[]> {
+  const authorIds = new Set<string>();
+  const fileIds = new Set<string>();
+
+  for (const p of posts) {
+    if (typeof p.author === "string" && p.author) authorIds.add(p.author);
+    if (typeof p.image === "string" && p.image) fileIds.add(p.image);
+    if (typeof p.attachment === "string" && p.attachment) fileIds.add(p.attachment);
   }
 
-  // Merge author objects back into posts
-  return posts.map(p => {
-    if (typeof p.author === "string") {
-      const user = userMap.get(p.author);
-      return {
-        ...p,
-        author: user ?? { id: p.author, first_name: "Member", last_name: "", avatar: null },
-      };
-    }
-    return p;
-  });
+  const [userMap, fileMap] = await Promise.all([
+    fetchUsers(authorIds),
+    fetchFiles(fileIds),
+  ]);
+
+  return posts.map(p => ({
+    ...p,
+    author:
+      typeof p.author === "string"
+        ? userMap.get(p.author) ?? { id: p.author, first_name: "Member", last_name: "", avatar: null }
+        : p.author ?? { id: "", first_name: "Member", last_name: "", avatar: null },
+    image:
+      typeof p.image === "string"
+        ? fileMap.get(p.image) ?? null
+        : p.image ?? null,
+    attachment:
+      typeof p.attachment === "string"
+        ? fileMap.get(p.attachment) ?? null
+        : p.attachment ?? null,
+  }));
 }
+
+/* ------------------------------------------------------------------ */
+/*  Route handlers                                                     */
+/* ------------------------------------------------------------------ */
 
 export async function GET(req: NextRequest) {
   const token = req.cookies.get("directus_token")?.value;
@@ -61,25 +105,24 @@ export async function GET(req: NextRequest) {
   if (!meRes.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const scope    = searchParams.get("scope") ?? "global";
-  const classId  = searchParams.get("class_id");
-  const page     = parseInt(searchParams.get("page") ?? "1");
-  const limit    = 20;
-  const offset   = (page - 1) * limit;
+  const scope   = searchParams.get("scope") ?? "global";
+  const classId = searchParams.get("class_id");
+  const page    = parseInt(searchParams.get("page") ?? "1");
+  const limit   = 20;
+  const offset  = (page - 1) * limit;
 
   const filter = scope === "class" && classId
     ? `&filter[scope][_eq]=class&filter[class_id][_eq]=${classId}`
     : `&filter[scope][_eq]=global`;
 
+  // Request flat fields only — author, image, attachment come back as UUID strings.
+  // We hydrate them into full objects afterwards.
   const fields = [
     "id", "date_created", "content", "scope", "class_id",
     "link_url", "link_title", "link_description", "link_image",
-    "author.id", "author.first_name", "author.last_name", "author.avatar",
-    "image.id", "image.filename_download", "image.type",
-    "attachment.id", "attachment.filename_download", "attachment.type",
+    "author", "image", "attachment",
   ].map(f => `fields[]=${f}`).join("&");
 
-  // Use admin token so relational fields always resolve when possible
   const res = await fetch(
     `${DIRECTUS_URL}/items/community_posts?${fields}${filter}&sort[]=-date_created&limit=${limit}&offset=${offset}&meta=total_count`,
     { headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` }, cache: "no-store" }
@@ -88,9 +131,7 @@ export async function GET(req: NextRequest) {
   if (!res.ok) return NextResponse.json({ error: "Failed to fetch posts" }, { status: res.status });
   const json = await res.json();
 
-  // If author came back as a bare UUID, hydrate with user details
-  const posts = await hydrateAuthors(json.data ?? []);
-
+  const posts = await hydratePosts(json.data ?? []);
   return NextResponse.json({ data: posts, meta: json.meta });
 }
 
@@ -111,7 +152,7 @@ export async function POST(req: NextRequest) {
 
   if (!content?.trim()) return NextResponse.json({ error: "Content required" }, { status: 400 });
 
-  // Use admin token to create the post so all fields are writable
+  // Use admin token to create the post
   const res = await fetch(`${DIRECTUS_URL}/items/community_posts`, {
     method: "POST",
     headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}`, "Content-Type": "application/json" },
@@ -135,38 +176,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to create post" }, { status: res.status });
   }
   const json = await res.json();
-  const postId = json.data?.id;
+  const raw = json.data;
 
-  // Re-fetch with expanded fields using admin token
-  const fullFields = [
-    "id", "date_created", "content", "scope", "class_id",
-    "link_url", "link_title", "link_description", "link_image",
-    "author.id", "author.first_name", "author.last_name", "author.avatar",
-    "image.id", "image.filename_download",
-    "attachment.id", "attachment.filename_download",
-  ].map(f => `fields[]=${f}`).join("&");
+  // Build the full post object the frontend expects using data we already have
+  const fileMap = new Map<string, FileObj>();
+  const imageId = typeof raw.image === "string" ? raw.image : null;
+  const attachId = typeof raw.attachment === "string" ? raw.attachment : null;
 
-  const fullRes = await fetch(
-    `${DIRECTUS_URL}/items/community_posts/${postId}?${fullFields}`,
-    { headers: { Authorization: `Bearer ${DIRECTUS_TOKEN}` }, cache: "no-store" }
-  );
-
-  let postData: RawPost;
-  if (fullRes.ok) {
-    const fullJson = await fullRes.json();
-    postData = fullJson.data ?? json.data;
-  } else {
-    postData = json.data;
+  if (imageId || attachId) {
+    const ids = new Set<string>();
+    if (imageId) ids.add(imageId);
+    if (attachId) ids.add(attachId);
+    const fMap = await fetchFiles(ids);
+    for (const [k, v] of fMap) fileMap.set(k, v);
   }
 
-  // If author is still a bare UUID after re-fetch, manually attach the user info
-  // we already have from the /users/me call
-  if (typeof postData.author === "string") {
-    postData = {
-      ...postData,
-      author: { id: me.id, first_name: me.first_name, last_name: me.last_name ?? "", avatar: me.avatar ?? null },
-    };
-  }
+  const postData = {
+    id: raw.id,
+    date_created: raw.date_created,
+    content: raw.content,
+    scope: raw.scope,
+    class_id: raw.class_id,
+    link_url: raw.link_url ?? null,
+    link_title: raw.link_title ?? null,
+    link_description: raw.link_description ?? null,
+    link_image: raw.link_image ?? null,
+    author: { id: me.id, first_name: me.first_name, last_name: me.last_name ?? "", avatar: me.avatar ?? null },
+    image: imageId ? fileMap.get(imageId) ?? null : null,
+    attachment: attachId ? fileMap.get(attachId) ?? null : null,
+  };
 
   return NextResponse.json({ data: postData }, { status: 201 });
 }
