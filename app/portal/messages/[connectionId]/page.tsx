@@ -109,14 +109,18 @@ export default async function ChatPage({
   const isTeacher = role === "teacher";
   const tabs = isTeacher
     ? [
-        { label: "Dashboard", href: "/portal/teacher" },
-        { label: "Community", href: "/portal/community" },
-        { label: "People", href: "/portal/people" },
+        { label: "Dashboard",  href: "/portal/teacher" },
+        { label: "Classes",    href: "/portal/classes" },
+        { label: "Library",    href: "/portal/library" },
+        { label: "Community",  href: "/portal/community" },
+        { label: "People",     href: "/portal/people" },
       ]
     : [
-        { label: "Dashboard", href: "/portal/student" },
-        { label: "Community", href: "/portal/community" },
-        { label: "People", href: "/portal/people" },
+        { label: "Dashboard",  href: "/portal/student" },
+        { label: "Classes",    href: "/portal/classes" },
+        { label: "Library",    href: "/portal/library" },
+        { label: "Community",  href: "/portal/community" },
+        { label: "People",     href: "/portal/people" },
       ];
 
   const otherName = `${otherUser.first_name} ${otherUser.last_name ?? ""}`.trim();

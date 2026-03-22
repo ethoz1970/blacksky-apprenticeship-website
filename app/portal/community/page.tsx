@@ -41,14 +41,18 @@ export default async function CommunityPage() {
 
   const tabs = isTeacher
     ? [
-        { label: "Dashboard", href: "/portal/teacher" },
-        { label: "Community", href: "/portal/community" },
-        { label: "People", href: "/portal/people" },
+        { label: "Dashboard",  href: "/portal/teacher" },
+        { label: "Classes",    href: "/portal/classes" },
+        { label: "Library",    href: "/portal/library" },
+        { label: "Community",  href: "/portal/community" },
+        { label: "People",     href: "/portal/people" },
       ]
     : [
-        { label: "Dashboard", href: "/portal/student" },
-        { label: "Community", href: "/portal/community" },
-        { label: "People", href: "/portal/people" },
+        { label: "Dashboard",  href: "/portal/student" },
+        { label: "Classes",    href: "/portal/classes" },
+        { label: "Library",    href: "/portal/library" },
+        { label: "Community",  href: "/portal/community" },
+        { label: "People",     href: "/portal/people" },
       ];
 
   void basePath;

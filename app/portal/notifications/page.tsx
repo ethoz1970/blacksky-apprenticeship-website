@@ -22,22 +22,27 @@ export default async function NotificationsPage() {
 
   const tabs = role === "admin"
     ? [
-        { label: "Dashboard",      href: "/portal/admin" },
-        { label: "Users",          href: "/portal/admin/users" },
-        { label: "Classes",        href: "/portal/admin/classes" },
-        { label: "Community",      href: "/portal/community" },
-        { label: "People",         href: "/portal/people" },
+        { label: "Dashboard",  href: "/portal/admin" },
+        { label: "Users",      href: "/portal/admin/users" },
+        { label: "Classes",    href: "/portal/classes" },
+        { label: "Library",    href: "/portal/library" },
+        { label: "Community",  href: "/portal/community" },
+        { label: "People",     href: "/portal/people" },
       ]
     : role === "teacher"
     ? [
-        { label: "Dashboard",      href: "/portal/teacher" },
-        { label: "Community",      href: "/portal/community" },
-        { label: "People",         href: "/portal/people" },
+        { label: "Dashboard",  href: "/portal/teacher" },
+        { label: "Classes",    href: "/portal/classes" },
+        { label: "Library",    href: "/portal/library" },
+        { label: "Community",  href: "/portal/community" },
+        { label: "People",     href: "/portal/people" },
       ]
     : [
-        { label: "Dashboard",      href: "/portal/student" },
-        { label: "Community",      href: "/portal/community" },
-        { label: "People",         href: "/portal/people" },
+        { label: "Dashboard",  href: "/portal/student" },
+        { label: "Classes",    href: "/portal/classes" },
+        { label: "Library",    href: "/portal/library" },
+        { label: "Community",  href: "/portal/community" },
+        { label: "People",     href: "/portal/people" },
       ];
 
   return (
