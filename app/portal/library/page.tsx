@@ -6,7 +6,7 @@ const DIRECTUS_URL =
   process.env.NEXT_PUBLIC_DIRECTUS_URL ||
   "https://directus-production-21fe.up.railway.app";
 
-const ADMIN_TOKEN = process.env.DIRECTUS_ADMIN_TOKEN || "";
+const ADMIN_TOKEN = process.env.DIRECTUS_API_TOKEN || "";
 
 const typeColors: Record<string, string> = {
   document:   "#7b61ff",
